@@ -1,11 +1,14 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const SUPABASE_SDK = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/+esm";
-const SITE_ORIGIN = "https://eco-bio-panel.helenlopezj669.chatgpt.site";
 let supabase = null;
 let language = localStorage.getItem("eco-bio-language") || "vi";
 let currentAdminTable = "products";
 let adminSession = null;
+let memberRouteActive = false;
+let adminRouteActive = false;
+let memberDataLoaded = false;
+let activeSession = null;
 
 const tableDefinitions = {
   products: { title: "Sản phẩm", label: "CATALOG / 01", cols: ["name", "status", "is_active", "created_at"], headers: ["TÊN", "TRẠNG THÁI", "ĐANG HIỂN THỊ", "TẠO LÚC"], order: "created_at", fields: [
@@ -92,21 +95,182 @@ function initNavigation() {
     nav.classList.remove("open");
     toggle?.setAttribute("aria-expanded", "false");
   }));
-  $("#language-toggle")?.addEventListener("click", () => {
+  const toggleLanguage = () => {
     applyLanguage(language === "vi" ? "en" : "vi");
+    updateMemberEntry(activeSession);
     if (supabase) loadPublicData();
+    if (supabase && memberRouteActive && !$("#member-dashboard").hidden) {
+      memberDataLoaded = false;
+      loadMemberWorkspaceData();
+    }
     else {
       const notice = language === "vi" ? "Bản xem trước: chưa kết nối Supabase nên biểu mẫu chưa nhận đăng ký." : "Preview mode: Supabase is not connected, so the forms cannot receive requests.";
       setFormStatus($("#partner-status"), notice); setFormStatus($("#inquiry-status"), notice);
     }
-  });
+  };
+  $("#language-toggle")?.addEventListener("click", toggleLanguage);
+  $("#member-language-toggle")?.addEventListener("click", toggleLanguage);
 }
 
 function passportLink(code) {
-  const origin = location.origin === "null" ? SITE_ORIGIN : location.origin;
-  const url = new URL(origin);
+  const url = new URL(location.href);
+  url.search = "";
+  url.hash = "";
   url.searchParams.set("passport", code);
   return url.href;
+}
+
+function appRouteUrl(key, value) {
+  const url = new URL("./", location.href);
+  url.searchParams.set(key, value);
+  return url.href;
+}
+
+function updateMemberEntry(session) {
+  activeSession = session || null;
+  const entry = $("#member-entry");
+  if (!entry) return;
+  entry.href = appRouteUrl("portal", "1");
+  entry.textContent = session
+    ? (language === "vi" ? "Vào khu vực" : "Member space")
+    : (language === "vi" ? "Đăng nhập" : "Sign in");
+}
+
+function setMemberView(view) {
+  const target = $('[data-member-panel="' + view + '"]');
+  if (!target) return;
+  $$(".member-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.memberView === view));
+  $$("[data-member-panel]").forEach((panel) => { panel.hidden = panel !== target; });
+}
+
+function showMemberSession(session) {
+  const signedIn = Boolean(session?.user);
+  const wasSignedIn = !$("#member-dashboard").hidden;
+  $("#member-login").hidden = signedIn;
+  $("#member-dashboard").hidden = !signedIn;
+  if (signedIn) {
+    $("#member-user-email").textContent = session.user.email || "";
+    if (!wasSignedIn) setMemberView("overview");
+  } else {
+    memberDataLoaded = false;
+  }
+  updateMemberEntry(session);
+}
+
+function initMemberPortal() {
+  memberRouteActive = new URLSearchParams(location.search).get("portal") === "1";
+  if (!memberRouteActive) return;
+  $("#public-site").hidden = true;
+  $("#admin-app").hidden = true;
+  $("#member-app").hidden = false;
+  $(".skip-link").href = "#member-app";
+  document.title = "Eco-Bio Panel — Members";
+
+  $$(".member-tab").forEach((tab) => tab.addEventListener("click", () => setMemberView(tab.dataset.memberView)));
+  $$("[data-member-open]").forEach((button) => button.addEventListener("click", () => setMemberView(button.dataset.memberOpen)));
+
+  $("#member-login-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const status = $("#member-login-status");
+    if (!supabase) {
+      setFormStatus(status, language === "vi" ? "Chưa gửi được liên kết: hệ thống đăng nhập chưa được cấu hình." : "Could not send a link: sign-in is not configured yet.", "error");
+      return;
+    }
+    const email = new FormData(event.currentTarget).get("email");
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: appRouteUrl("portal", "1"), shouldCreateUser: true }
+    });
+    setFormStatus(status,
+      error ? (language === "vi" ? "Không gửi được email. Kiểm tra cấu hình Supabase Auth và URL chuyển hướng." : "Email could not be sent. Check Supabase Auth and redirect URL settings.")
+        : (language === "vi" ? "Đã gửi liên kết xác thực. Mở email để đăng nhập hoặc hoàn tất tạo tài khoản." : "Verification link sent. Open your email to sign in or finish creating your account."),
+      error ? "error" : "success");
+  });
+
+  $("#member-signout")?.addEventListener("click", async () => {
+    if (supabase) await supabase.auth.signOut();
+    showMemberSession(null);
+  });
+
+  $("#member-passport-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const status = $("#member-passport-status");
+    const result = $("#member-passport-result");
+    result.hidden = true;
+    if (!supabase) {
+      setFormStatus(status, language === "vi" ? "Tra cứu khả dụng sau khi Supabase được cấu hình." : "Lookup will be available after Supabase is configured.", "error");
+      return;
+    }
+    const code = String(new FormData(event.currentTarget).get("code") || "").trim();
+    const { data, error } = await supabase.from("product_passports")
+      .select("passport_code,material_summary,status,usage_notes,batch_code")
+      .eq("passport_code", code).eq("status", "published").maybeSingle();
+    if (error || !data) {
+      setFormStatus(status, language === "vi" ? "Không tìm thấy hồ sơ đã công bố với mã này." : "No published passport was found for this code.", "error");
+      return;
+    }
+    setFormStatus(status, "", "success");
+    const heading = document.createElement("h3"); heading.textContent = data.passport_code;
+    const materials = document.createElement("p"); materials.textContent = (language === "vi" ? "Vật liệu: " : "Materials: ") + (data.material_summary || "—");
+    const batch = document.createElement("p"); batch.textContent = (language === "vi" ? "Mã lô: " : "Batch: ") + (data.batch_code || "—");
+    const usage = document.createElement("p"); usage.textContent = data.usage_notes || (language === "vi" ? "Chưa có hướng dẫn sử dụng." : "No usage notes available.");
+    const link = document.createElement("a"); link.className = "text-link"; link.href = passportLink(data.passport_code); link.textContent = language === "vi" ? "Mở hồ sơ công khai ↗" : "Open public passport ↗";
+    result.replaceChildren(heading, materials, batch, usage, link);
+    result.hidden = false;
+  });
+}
+
+function memberEmpty(target, vi, en) {
+  const message = document.createElement("p");
+  message.className = "member-empty";
+  message.textContent = language === "vi" ? vi : en;
+  target.replaceChildren(message);
+}
+
+async function loadMemberWorkspaceData() {
+  if (!supabase || memberDataLoaded) return;
+  memberDataLoaded = true;
+  const [productsResult, testsResult, impactResult] = await Promise.all([
+    supabase.from("products").select("name,description,dimensions,expected_price_vnd,status").eq("is_active", true).order("created_at", { ascending: false }),
+    supabase.from("lab_tests").select("test_type,sample_code,test_date,result_summary,status").eq("is_public", true).order("test_date", { ascending: false }),
+    supabase.rpc("get_eco_impact")
+  ]);
+
+  const productList = $("#member-product-list");
+  if (productsResult.error || !productsResult.data?.length) {
+    memberEmpty(productList, "Chưa có sản phẩm được công khai.", "No public products yet.");
+  } else {
+    productList.replaceChildren(...productsResult.data.map((item) => {
+      const card = document.createElement("article"); card.className = "member-record-card";
+      const title = document.createElement("h3"); title.textContent = item.name;
+      const description = document.createElement("p"); description.textContent = item.description || (language === "vi" ? "Chưa có mô tả." : "No description yet.");
+      const meta = document.createElement("span");
+      const price = item.expected_price_vnd == null ? "" : Number(item.expected_price_vnd).toLocaleString(language === "vi" ? "vi-VN" : "en-US") + " ₫";
+      meta.textContent = [item.dimensions, price].filter(Boolean).join(" · ") || (language === "vi" ? "Thông tin chi tiết đang được cập nhật" : "Details are being updated");
+      card.append(title, description, meta); return card;
+    }));
+  }
+
+  const labList = $("#member-lab-list");
+  if (testsResult.error || !testsResult.data?.length) {
+    memberEmpty(labList, "Chưa có kết quả thử nghiệm được công khai.", "No public test results yet.");
+  } else {
+    labList.replaceChildren(...testsResult.data.map((item) => {
+      const card = document.createElement("article"); card.className = "member-record-card";
+      const title = document.createElement("h3"); title.textContent = item.test_type.replaceAll("_", " ");
+      const description = document.createElement("p"); description.textContent = item.result_summary || "—";
+      const state = item.status === "verified" ? (language === "vi" ? "Đã kiểm chứng" : "Verified") : (language === "vi" ? "Sơ bộ" : "Preliminary");
+      const meta = document.createElement("span"); meta.textContent = (item.sample_code || "—") + " · " + (item.test_date || "—") + " · " + state;
+      card.append(title, description, meta); return card;
+    }));
+  }
+
+  if (!impactResult.error && impactResult.data) {
+    const metrics = { straw: impactResult.data.straw_kg, hair: impactResult.data.hair_kg, panels: impactResult.data.panels, partners: impactResult.data.partners };
+    Object.entries(metrics).forEach(([key, value]) => {
+      $("#member-impact-" + key).textContent = value == null ? "—" : Number(value).toLocaleString(language === "vi" ? "vi-VN" : "en-US", { maximumFractionDigits: 1 });
+    });
+  }
 }
 
 function renderSamplePassport(code = "EBP-DEMO-001") {
@@ -388,18 +552,19 @@ function showAdminDashboard(session) {
 
 function initAdmin() {
   const params = new URLSearchParams(location.search);
-  const adminRoute = params.get("admin") === "1";
-  if (!adminRoute) return;
+  adminRouteActive = params.get("admin") === "1";
+  if (!adminRouteActive) return;
   $("#public-site").hidden = true;
+  $("#member-app").hidden = true;
   $("#admin-app").hidden = false;
   document.title = "Eco-Bio Panel — Admin";
-  $("#admin-close")?.addEventListener("click", () => { location.href = "/"; });
+  $("#admin-close")?.addEventListener("click", () => { location.href = new URL("./", location.href).href; });
   $("#admin-login-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const status = $("#admin-login-status");
     if (!supabase) { setFormStatus(status, language === "vi" ? "Chưa gửi được liên kết: hãy cấu hình Supabase trước." : "Sign-in link not sent: configure Supabase first.", "error"); return; }
     const email = new FormData(event.currentTarget).get("email");
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${location.origin}${location.pathname}?admin=1` } });
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: appRouteUrl("admin", "1"), shouldCreateUser: false } });
     setFormStatus(status, error ? (language === "vi" ? "Không gửi được email đăng nhập. Kiểm tra cấu hình Supabase Auth." : "Could not send the sign-in email. Check Supabase Auth settings.") : (language === "vi" ? "Đã gửi liên kết. Kiểm tra hộp thư của bạn." : "Sign-in link sent. Check your inbox."), error ? "error" : "success");
   });
   $("#admin-signout")?.addEventListener("click", async () => { await supabase?.auth.signOut(); adminSession = null; $("#admin-dashboard").hidden = true; $("#admin-login").hidden = false; });
@@ -413,16 +578,27 @@ function initAdmin() {
 
 async function init() {
   applyLanguage(language);
-  initNavigation(); initForms(); initAdmin();
+  initNavigation(); initForms(); initAdmin(); initMemberPortal();
   await connectSupabase();
   initPassport();
   if (supabase) {
     await loadPublicData();
-    if (new URLSearchParams(location.search).get("admin") === "1") {
-      const { data } = await supabase.auth.getSession();
-      showAdminDashboard(data?.session || null);
-      supabase.auth.onAuthStateChange((_event, session) => showAdminDashboard(session));
+    const { data } = await supabase.auth.getSession();
+    const session = data?.session || null;
+    updateMemberEntry(session);
+    if (memberRouteActive) {
+      showMemberSession(session);
+      if (session) await loadMemberWorkspaceData();
     }
+    if (adminRouteActive) showAdminDashboard(session);
+    supabase.auth.onAuthStateChange((_event, nextSession) => {
+      updateMemberEntry(nextSession);
+      if (memberRouteActive) showMemberSession(nextSession);
+      if (adminRouteActive) showAdminDashboard(nextSession);
+    });
+  } else {
+    updateMemberEntry(null);
+    if (memberRouteActive) showMemberSession(null);
   }
 }
 
