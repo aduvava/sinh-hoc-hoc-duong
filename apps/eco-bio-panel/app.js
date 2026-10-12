@@ -98,12 +98,13 @@ function initNavigation() {
   const toggleLanguage = () => {
     applyLanguage(language === "vi" ? "en" : "vi");
     updateMemberEntry(activeSession);
-    if (supabase) loadPublicData();
-    if (supabase && memberRouteActive && !$("#member-dashboard").hidden) {
-      memberDataLoaded = false;
-      loadMemberWorkspaceData();
-    }
-    else {
+    if (supabase) {
+      loadPublicData();
+      if (memberRouteActive && !$("#member-dashboard").hidden) {
+        memberDataLoaded = false;
+        loadMemberWorkspaceData();
+      }
+    } else {
       const notice = language === "vi" ? "Bản xem trước: chưa kết nối Supabase nên biểu mẫu chưa nhận đăng ký." : "Preview mode: Supabase is not connected, so the forms cannot receive requests.";
       setFormStatus($("#partner-status"), notice); setFormStatus($("#inquiry-status"), notice);
     }
