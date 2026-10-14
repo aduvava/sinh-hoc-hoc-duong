@@ -35,6 +35,11 @@
     ].join('\n');
     if (!html.includes(worksheetPlayerTarget)) throw new Error('Could not patch the worksheet player.');
     html = html.replace(worksheetPlayerTarget, worksheetPlayerFallback);
+    // Display practice time as a countdown while preserving elapsed seconds for scoring.
+    const practiceTimerBefore = "<p className=\"text-xs text-slate-400 font-bold uppercase\">Thời gian / Time</p><p className=\"font-extrabold text-xl text-blue-800 tabular-nums\">{formatTime(seconds)}</p>";
+    const practiceTimerAfter = "<p className=\"text-xs text-slate-400 font-bold uppercase\">Thời gian còn lại / Time left</p><p className=\"font-extrabold text-xl text-blue-800 tabular-nums\">{formatTime(Math.max(0, examDurationMinutes * 60 - seconds))}</p>";
+    if (html.split(practiceTimerBefore).length - 1 !== 1) throw new Error('Could not patch the practice countdown.');
+    html = html.replace(practiceTimerBefore, practiceTimerAfter);
     const historyScript='<script src="https://biobilingual.github.io/sinh-hoc-hoc-duong/apps/student/history.js?v=20261002-1108"><\/script>';
     if(html.includes('</body>')) html=html.replace('</body>',historyScript+'</body>');
     else html+=historyScript;
