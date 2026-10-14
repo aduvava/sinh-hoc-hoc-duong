@@ -22,6 +22,11 @@
       if(html.split(before).length-1!==1)throw new Error('Admin practice patch failed: '+description);
       html=html.replace(before,after);
     }
+    const adminClassPatches=[["admin class panel","  const subjects=['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa'];","  const subjects=['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa','Khác'];"],["admin assignment class","const assignmentClasses=grade=>['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa'].map(subject=>`${grade} ${subject}`);","const assignmentClasses=grade=>['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa','Khác'].map(subject=>`${grade} ${subject}`);"],["admin help text","Chỉ hiển thị 8 lớp đã chuẩn hóa của từng khối 10, 11 và 12.","Hiển thị 8 lớp hiện có và nhóm Khác của từng khối 10, 11 và 12."]];
+    for(const [label,before,after] of adminClassPatches){
+      if(html.split(before).length-1!==1)throw new Error('Admin class patch failed: '+label);
+      html=html.replace(before,after);
+    }
     html=html.replace('</body>','<script src="./student-reset.js"><\/script></body>');
     document.open();
     document.write(html);
