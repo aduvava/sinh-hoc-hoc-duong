@@ -1,0 +1,31 @@
+name: Validate BioBilingual BKHost JSX
+on:
+  push:
+    paths:
+      - 'bkhost/**'
+      - '.github/workflows/validate-bkhost.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install JSX parser
+        run: npm install --no-save --no-package-lock @babel/parser@7
+      - name: Validate student and admin React scripts
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const parser = require('@babel/parser');
+          for(const name of ['bkhost/index.html','bkhost/admin/index.html']){
+            const html = fs.readFileSync(name, 'utf8');
+            const source=[...html.matchAll(/<script\s+type="text\/babel"[^>]*>([\s\S]*?)<\/script>/g)];
+            if(source.length!==1)throw Error(name+' does not contain exactly one React script; found '+source.length);
+            try {const ast=parser.parse(source[0][1],{sourceType:'script',plugins:['jsx']});console.log(name,'JSX parse OK, statements:',ast.program.body.length);}
+            catch(error){console.error('JSX parse FAILED in',name,error.message);process.exitCode=1;}
+          }
+          NODE
