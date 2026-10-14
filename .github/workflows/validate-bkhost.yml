@@ -24,8 +24,10 @@ jobs:
           for(const name of ['bkhost/index.html','bkhost/admin/index.html']){
             const html = fs.readFileSync(name, 'utf8');
             const source=[...html.matchAll(/<script\s+type="text\/babel"[^>]*>([\s\S]*?)<\/script>/g)];
-            if(source.length!==1)throw Error(name+' does not contain exactly one React script; found '+source.length);
-            try {const ast=parser.parse(source[0][1],{sourceType:'script',plugins:['jsx']});console.log(name,'JSX parse OK, statements:',ast.program.body.length);}
-            catch(error){console.error('JSX parse FAILED in',name,error.message);process.exitCode=1;}
+            if(source.length<1)throw Error(name+' missing React script');
+            for(const [i,match] of source.entries()){
+              try {const ast=parser.parse(match[1],{sourceType:'script',plugins:['jsx']});console.log(name,'JSX script',i+1,'parse OK; statements:',ast.program.body.length);}
+              catch(error){console.error('JSX parse FAILED in',name,'script',i+1,error.message);process.exitCode=1;}
+            }
           }
           NODE
