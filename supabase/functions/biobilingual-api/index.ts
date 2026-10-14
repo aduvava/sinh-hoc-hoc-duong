@@ -20,7 +20,7 @@ const allowedStateKeys = new Set([
   "bioedu_exams","bioedu_course_structure","bioedu_vocab_audio"
 ]);
 
-const classSubjects = new Set(["Toán 1","Toán 2","Hóa","Sinh","Văn 1","Văn 2","Sử","Địa"]);
+const classSubjects = new Set(["Toán 1","Toán 2","Hóa","Sinh","Văn 1","Văn 2","Sử","Địa","Khác"]);
 const storageBuckets = new Set([
   "vocabulary-media","vocabulary-audio","biology-images","learning-resources",
   "learning-videos","worksheets","mindmaps","music","avatars"
