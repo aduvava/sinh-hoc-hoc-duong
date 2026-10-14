@@ -48,6 +48,25 @@ body, #root > div, #root main { background: linear-gradient(160deg, #fffdf0 0%, 
 .lesson-scroller::-webkit-scrollbar-track { background: #e7f0df; border-radius: 999px; }
 .lesson-scroller::-webkit-scrollbar-thumb { background: #6f95d8; border-radius: 999px; border: 2px solid #e7f0df; }
 </style>
+<script>
+(function(){
+  const seen = [];
+  function show(message){
+    const line=String(message||'').slice(0,1400);
+    if(!line||seen.includes(line))return;
+    seen.push(line);
+    if(!document.body){document.addEventListener('DOMContentLoaded',()=>show(line),{once:true});return;}
+    let panel=document.getElementById('bio-diagnostic');
+    if(!panel){panel=document.createElement('div');panel.id='bio-diagnostic';panel.style.cssText='position:fixed!important;z-index:2147483647!important;inset:auto 12px 12px 12px!important;max-height:60vh!important;overflow:auto!important;background:#fff1f2!important;color:#9f1239!important;padding:18px!important;border:2px solid #fb7185!important;border-radius:14px!important;font:14px/1.5 monospace!important';document.body.appendChild(panel);}
+    panel.textContent='BioBilingual diagnostic: '+seen.join(' | ');
+  }
+  window.addEventListener('error',e=>show('Window error: '+e.message+' @ '+(e.filename||'')+':'+(e.lineno||'')+':'+(e.colno||'')));
+  window.addEventListener('unhandledrejection',e=>show('Unhandled rejection: '+(e.reason?.message||e.reason)));
+  const oldError=console.error.bind(console);
+  console.error=(...args)=>{const msg=args.map(x=>x?.message||String(x)).join(' ');if(/SyntaxError|ParseError|Babel|ReferenceError|error/i.test(msg))show('Console error: '+msg);oldError(...args);};
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{const root=document.getElementById('root'); if(!root?.children?.length)show('No visible React root after 8 seconds. React '+typeof window.React+'; ReactDOM '+typeof window.ReactDOM+'; Babel '+typeof window.Babel+'; root '+!!root);},8000);});
+})();
+</script>
 </head>
 <body><div id="root"></div>
 <script type="text/babel">
