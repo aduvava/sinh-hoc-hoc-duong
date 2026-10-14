@@ -2277,4 +2277,19 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script><script src="./history.js?v=20261015"></script></body></html>
+</script><script src="./history.js?v=20261015"></script><script>
+(function(){
+  window.addEventListener('DOMContentLoaded',function(){
+    var report=function(t){var e=document.createElement('div');e.style.cssText='padding:15px;color:#9f1239;background:#fff1f2;font:15px monospace;position:relative;z-index:999999';e.textContent=t;document.body.prepend(e);};
+    if(!window.Babel)report('DIAG: Babel not loaded; React='+typeof React+', ReactDOM='+typeof ReactDOM);
+    else {
+      try{
+        var script=document.querySelector('script[type="text/babel"]');
+        var result=window.Babel.transform(script.textContent,{presets:['react']});
+        if(!result.code)report('DIAG: Babel returned empty code.');
+      }catch(error){report('DIAG Babel transform: '+(error?.stack||error?.message||error));}
+    }
+  });
+})();
+</script>
+</body></html>
