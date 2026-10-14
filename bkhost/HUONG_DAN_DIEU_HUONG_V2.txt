@@ -1,0 +1,11 @@
+BIOBILINGUAL - SUA LOI CHUYEN MUC V2 (15/10/2026)
+
+1. Sao luu index.html va history.js hien tai trong public_html.
+2. Tai ZIP nay len public_html va Extract truc tiep vao public_html.
+3. Ghi de index.html va history.js. Hai tep phai nam cung cap trong public_html.
+4. Mo website, nhan Ctrl+Shift+R, dang nhap va thu cac muc.
+5. Mo /BIO_VERSION.txt tren ten mien de kiem tra. Noi dung phai la 20261015-NAV-V2.
+
+Ban sua dua nut Lich su lam bai vao React va bo thao tac xoa DOM cua history.js,
+tranh loi insertBefore/removeChild khi chuyen muc. Lich su van mo trong hop thoai.
+ZIP chi cap nhat giao dien hoc sinh, khong co buoc thay doi du lieu.
