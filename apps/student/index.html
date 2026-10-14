@@ -45,6 +45,11 @@
       if(html.split(before).length-1!==1)throw new Error('Practice patch failed: '+description);
       html=html.replace(before,after);
     }
+    const classSignupPatches=[["student class list","const BIO_CLASS_SUBJECTS = ['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa'];","const BIO_CLASS_SUBJECTS = ['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa','Khác'];"],["student visible label","{classOptions.map(className => <option key={className} value={`${profileDraft.block} ${className}`}>{profileDraft.block} {className}</option>)}","{classOptions.map(className => <option key={className} value={`${profileDraft.block} ${className}`}>{className==='Khác'?'Khác':`${profileDraft.block} ${className}`}</option>)}"]];
+    for(const [label,before,after] of classSignupPatches){
+      if(html.split(before).length-1!==1)throw new Error('Class signup patch failed: '+label);
+      html=html.replace(before,after);
+    }
     const historyScript='<script src="https://biobilingual.github.io/sinh-hoc-hoc-duong/apps/student/history.js?v=20261002-1108"><\/script>';
     if(html.includes('</body>')) html=html.replace('</body>',historyScript+'</body>');
     else html+=historyScript;
