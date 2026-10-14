@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BioBilingual - Sinh học song ngữ</title>
+<meta name="biobilingual-build" content="20261015-NAV-V2" />
 
 <script defer src="https://cdn.tailwindcss.com"></script>
 <script defer crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
@@ -57,6 +58,10 @@ const {useState,useEffect,useRef,useMemo}=React;
 const BIO_SHARED_API = 'https://rglsppkyxubpmbebdobe.supabase.co/functions/v1/biobilingual-api';
 const BIO_GOOGLE_CLIENT_ID = '519568222612-mvds8a054h1hn49ej5guk1hk9piv0arb.apps.googleusercontent.com';
 const BIO_CLASS_SUBJECTS = ['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa','Khác'];
+const readStoredArray = (key, fallback = []) => {
+  try { const value = JSON.parse(localStorage.getItem(key) || 'null'); return Array.isArray(value) ? value : fallback; }
+  catch { return fallback; }
+};
 const readGoogleAuth = () => {
   try {
     const auth = JSON.parse(localStorage.getItem('bioedu_google_auth') || 'null');
@@ -87,7 +92,7 @@ const assignmentIsAvailable = (item,now=Date.now()) => {
 const assignmentStartLabel = item => item?.releaseAt ? new Date(item.releaseAt).toLocaleString('vi-VN') : '';
 const recordLearningResult = async result => {
   let current = [];
-  try { current = JSON.parse(localStorage.getItem('bioedu_results') || '[]'); } catch {}
+  try { current = readStoredArray('bioedu_results'); } catch {}
   const next = [result, ...current.filter(item => item.id !== result.id)].slice(0, 3000);
   localStorage.setItem('bioedu_results', JSON.stringify(next));
   const authToken = getGoogleAuthToken();
@@ -250,14 +255,14 @@ const questionBank = [
 
 const VocabSystem = ({ selectedPath, onPathChange, initialGrade = '10' }) => {
   const [step, setStep] = useState('config'); // config, study, results
-  const [adminVocabSets, setAdminVocabSets] = useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_vocab_bank') || '[]'); } catch { return []; } });
+  const [adminVocabSets, setAdminVocabSets] = useState(() => { try { return readStoredArray('bioedu_vocab_bank'); } catch { return []; } });
   useEffect(() => {
-    const sync = () => { try { setAdminVocabSets(JSON.parse(localStorage.getItem('bioedu_vocab_bank') || '[]')); } catch {} };
+    const sync = () => { try { setAdminVocabSets(readStoredArray('bioedu_vocab_bank')); } catch {} };
     window.addEventListener('storage', sync); window.addEventListener('bioedu-shared-update', sync);
     return () => { window.removeEventListener('storage', sync); window.removeEventListener('bioedu-shared-update', sync); };
   }, []);
   useEffect(() => {
-    const goBack = () => { if (step !== 'config') setStep('config'); };
+    const goBack = () => { if (step !== 'config') setStep('config'); else window.dispatchEvent(new Event('bioedu-go-home')); };
     window.addEventListener('bioedu-local-back', goBack);
     return () => window.removeEventListener('bioedu-local-back', goBack);
   }, [step]);
@@ -846,9 +851,9 @@ const MindMapShowcase=({selectedGrade,selectedChapterTitle,selectedLesson})=>{
 const sanitizeTheoryHtml = html => { const doc=new DOMParser().parseFromString(html||'','text/html');doc.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(node=>node.remove());doc.querySelectorAll('*').forEach(node=>[...node.attributes].forEach(attribute=>{if(attribute.name.toLowerCase().startsWith('on')||/javascript:/i.test(attribute.value))node.removeAttribute(attribute.name)}));return doc.body.innerHTML; };
 const KnowledgeContentPanel = ({ selectedGrade, selectedChapterTitle, selectedLesson }) => {
   const fallback=[{id:'default',title:'Tế bào và thành phần hoá học',description:'Tài liệu ôn tập nền tảng.',content:'Tế bào là đơn vị cấu trúc và chức năng cơ bản của cơ thể sống. Nước là dung môi cho nhiều phản ứng sinh hoá; các nguyên tố hoá học tham gia cấu tạo nên đại phân tử.'}];
-  const [files,setFiles]=useState(()=>{try{return JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback}catch{return fallback}});
+  const [files,setFiles]=useState(()=>{try{return readStoredArray('bioedu_theory_files',fallback)}catch{return fallback}});
   const [selected,setSelected]=useState(0);
-  useEffect(()=>{const sync=()=>{try{setFiles(JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback);setSelected(0)}catch{}};window.addEventListener('storage',sync);window.addEventListener('bioedu-shared-update',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bioedu-shared-update',sync)}},[]);
+  useEffect(()=>{const sync=()=>{try{setFiles(readStoredArray('bioedu_theory_files',fallback));setSelected(0)}catch{}};window.addEventListener('storage',sync);window.addEventListener('bioedu-shared-update',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bioedu-shared-update',sync)}},[]);
   useEffect(()=>setSelected(0),[selectedGrade,selectedChapterTitle,selectedLesson]);
   const normalized=value=>String(value||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const matches=files.filter(item=>{const gradeOk=!item.grade||String(item.grade)===String(selectedGrade);const chapterOk=!item.chapter||!selectedChapterTitle||normalized(item.chapter)===normalized(selectedChapterTitle)||normalized(item.chapter).includes(normalized(selectedChapterTitle))||normalized(selectedChapterTitle).includes(normalized(item.chapter));const lessonOk=!item.lesson||!selectedLesson||normalized(item.lesson)===normalized(selectedLesson)||normalized(item.lesson).includes(normalized(selectedLesson))||normalized(selectedLesson).includes(normalized(item.lesson));return gradeOk&&lessonOk&&(selectedLesson?true:chapterOk)});
@@ -1003,7 +1008,7 @@ const MaterialsTab = ({ selectedPath, onPathChange }) => {
   const [selectedMaterialGrade, setSelectedMaterialGrade] = useState(selectedPath?.grade || '10');
   const [selectedMaterialChapter, setSelectedMaterialChapter] = useState(selectedPath?.chapterId || null);
   const [selectedMaterialLesson, setSelectedMaterialLesson] = useState(selectedPath?.lesson || '');
-  const [uploadedMaterials, setUploadedMaterials] = useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_materials_library') || '[]'); } catch { return []; } });
+  const [uploadedMaterials, setUploadedMaterials] = useState(() => { try { return readStoredArray('bioedu_materials_library'); } catch { return []; } });
   const assignmentNow = useAssignmentClock();
   useEffect(() => {
     const goBack = () => { if (worksheetExamItem) setWorksheetExamItem(null); else setActivePin(null); };
@@ -1011,7 +1016,7 @@ const MaterialsTab = ({ selectedPath, onPathChange }) => {
     return () => window.removeEventListener('bioedu-local-back', goBack);
   }, [worksheetExamItem]);
   useEffect(() => {
-    const sync = () => { try { setUploadedMaterials(JSON.parse(localStorage.getItem('bioedu_materials_library') || '[]')); } catch {} };
+    const sync = () => { try { setUploadedMaterials(readStoredArray('bioedu_materials_library')); } catch {} };
     window.addEventListener('storage', sync); window.addEventListener('bioedu-shared-update', sync);
     return () => { window.removeEventListener('storage', sync); window.removeEventListener('bioedu-shared-update', sync); };
   }, []);
@@ -1289,8 +1294,8 @@ const TheoryPanel = ({ selectedPath, onExam }) => {
 
 const TheoryFilesPanel = ({ onExam }) => {
   const fallback=[{id:'default',title:'Tế bào và thành phần hoá học',description:'Tài liệu ôn tập nền tảng.',content:'Tế bào là đơn vị cấu trúc và chức năng cơ bản của cơ thể sống. Nước là dung môi cho nhiều phản ứng sinh hoá; các nguyên tố hoá học tham gia cấu tạo nên đại phân tử.'}];
-  const [files,setFiles]=useState(()=>{try{return JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback}catch{return fallback}});const [selected,setSelected]=useState(0);
-  useEffect(()=>{const sync=()=>{try{setFiles(JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback)}catch{}};window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync)},[]);
+  const [files,setFiles]=useState(()=>{try{return readStoredArray('bioedu_theory_files',fallback)}catch{return fallback}});const [selected,setSelected]=useState(0);
+  useEffect(()=>{const sync=()=>{try{setFiles(readStoredArray('bioedu_theory_files',fallback))}catch{}};window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync)},[]);
   const file=files[selected]||files[0];
   return <div className="max-w-6xl mx-auto pb-10 animate-fade-in"><div className="bg-white border border-blue-100 rounded-2xl p-2 flex justify-center gap-2"><button className="px-7 py-3 rounded-xl bg-blue-600 text-white font-bold">Lý thuyết / Theory</button><button onClick={onExam} className="px-7 py-3 rounded-xl text-slate-600 font-bold hover:bg-blue-50">Đề thi / Exam</button></div><div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 mt-5"><aside className="bg-white border border-slate-200 rounded-2xl p-4"><p className="text-sm font-extrabold text-slate-700 px-2 mb-3">Tài liệu lý thuyết</p><div className="space-y-2">{files.map((item,i)=><button key={item.id||i} onClick={()=>setSelected(i)} className={`w-full text-left p-3 rounded-xl border ${selected===i?'bg-blue-50 border-blue-200':'border-transparent hover:bg-slate-50'}`}><p className="font-bold text-slate-800 text-sm">{item.title}</p><p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p></button>)}</div></aside><article className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8"><p className="text-xs uppercase tracking-wider font-bold text-blue-600">Tài liệu lý thuyết</p><h3 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-2">{file.title}</h3><p className="text-slate-500 mt-2">{file.description}</p><div className="mt-6 pt-6 border-t border-slate-100 whitespace-pre-line text-slate-700 leading-8">{file.content}</div><div className="mt-8 pt-5 border-t border-slate-100 flex justify-end"><button onClick={onExam} className="px-5 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700">Làm đề thi / Take exam</button></div></article></div></div>;
 };
@@ -1313,11 +1318,11 @@ const QuestionBankTab = ({ selectedPath }) => {
     window.addEventListener('bioedu-local-back', goBack);
     return () => window.removeEventListener('bioedu-local-back', goBack);
   }, []);
-  const [uploadedExamQuestions, setUploadedExamQuestions] = useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_exam_bank') || '[]'); } catch { return []; } });
+  const [uploadedExamQuestions, setUploadedExamQuestions] = useState(() => { try { return readStoredArray('bioedu_exam_bank'); } catch { return []; } });
   const assignmentNow = useAssignmentClock();
   const autoSubmittedRef = useRef(false);
   useEffect(() => {
-    const sync = () => { try { setUploadedExamQuestions(JSON.parse(localStorage.getItem('bioedu_exam_bank') || '[]')); } catch {} };
+    const sync = () => { try { setUploadedExamQuestions(readStoredArray('bioedu_exam_bank')); } catch {} };
     window.addEventListener('storage', sync); window.addEventListener('bioedu-shared-update', sync);
     return () => { window.removeEventListener('storage', sync); window.removeEventListener('bioedu-shared-update', sync); };
   }, []);
@@ -1639,9 +1644,9 @@ const NavIcon = ({ name, active }) => {
 };
 
 const EntertainmentTab = () => {
-  const [songs, setSongs] = React.useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_entertainment') || '[]') || []; } catch { return []; } });
+  const [songs, setSongs] = React.useState(() => { try { return readStoredArray('bioedu_entertainment') || []; } catch { return []; } });
   React.useEffect(() => {
-    const refresh = () => { try { setSongs(JSON.parse(localStorage.getItem('bioedu_entertainment') || '[]') || []); } catch {} };
+    const refresh = () => { try { setSongs(readStoredArray('bioedu_entertainment') || []); } catch {} };
     window.addEventListener('storage', refresh); window.addEventListener('bioedu-shared-update', refresh);
     refresh(); return () => { window.removeEventListener('storage', refresh); window.removeEventListener('bioedu-shared-update', refresh); };
   }, []);
@@ -1757,6 +1762,16 @@ const BioLogo = () => (
     </svg>
   </span>
 );
+
+class AppContentErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) { console.error('BioBilingual page render failed:', error, info?.componentStack || ''); }
+  render() {
+    if (this.state.hasError) return <section role="alert" className="mx-5 md:mx-10 my-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm"><h2 className="text-xl font-extrabold text-amber-900">Mục này chưa thể mở / This section could not load</h2><p className="mt-2 text-sm text-amber-800">Hãy tải lại trang để thử lại. / Reload the page to try again.</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-xl bg-emerald-700 px-5 py-3 font-extrabold text-white">Tải lại trang / Reload</button></section>;
+    return this.props.children;
+  }
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -1899,7 +1914,7 @@ function App() {
     setProfileSaving(true);
     setAuthError('');
     const studentId = next.email;
-    const currentStudents = (() => { try { return JSON.parse(localStorage.getItem('bioedu_students') || '[]'); } catch { return []; } })();
+    const currentStudents = (() => { try { return readStoredArray('bioedu_students'); } catch { return []; } })();
     const existing = currentStudents.find(student => student.id === studentId);
     const studentRecord = { ...next, id: studentId, grade: next.block, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
     try {
@@ -1930,6 +1945,11 @@ function App() {
     setActiveTab(nextTab);
     window.requestAnimationFrame(scrollMainToTop);
   };
+  useEffect(() => {
+    const returnHome = () => { setActiveTab('home'); window.requestAnimationFrame(scrollMainToTop); };
+    window.addEventListener('bioedu-go-home', returnHome);
+    return () => window.removeEventListener('bioedu-go-home', returnHome);
+  }, []);
   useEffect(() => {
     const frame = window.requestAnimationFrame(scrollMainToTop);
     return () => window.cancelAnimationFrame(frame);
@@ -2135,7 +2155,7 @@ function App() {
       <main ref={mainRef} className="flex-1 overflow-y-auto relative bg-[#eef6ff] pb-20 md:pb-0">
         <div className="h-16 md:h-20 px-4 md:px-10 flex items-center justify-between border-b border-blue-100 bg-white/85 backdrop-blur-sm sticky top-0 z-10">
           <div>{activeTab !== 'home' && <button onClick={() => window.dispatchEvent(new Event('bioedu-local-back'))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base font-extrabold text-slate-600 shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"><span aria-hidden="true" className="text-lg leading-none">←</span> Quay lại / Back</button>}</div>
-          <div className="flex items-center gap-2 md:gap-4"><button className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Trợ giúp / Help</button><span className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">?</span></div>
+          <div className="flex items-center gap-2 md:gap-4"><button type="button" aria-label="Lịch sử làm bài" onClick={() => window.dispatchEvent(new Event('bioedu-open-history'))} className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Lịch sử làm bài / Attempt History</button><button type="button" aria-label="Lịch sử làm bài" onClick={() => window.dispatchEvent(new Event('bioedu-open-history'))} className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">↺</button></div>
         </div>
         
         {/* Header Tabs */}
@@ -2151,6 +2171,7 @@ function App() {
           </div>
         )}
 
+        <AppContentErrorBoundary key={activeTab}>
         {activeTab === 'home' && renderHome()}
         {activeTab === 'vocab' && <VocabSystem initialGrade={selectedHomeGrade} selectedPath={findLessonContext(selectedHomeLesson)} onPathChange={(context) => { if (context) { setSelectedHomeGrade(context.grade); setSelectedHomeLesson(context.lesson); } }} />}
         {activeTab === 'materials' && <MaterialsTab />}
@@ -2158,11 +2179,7 @@ function App() {
         {activeTab === 'library' && <QuestionBankTab />}
         
         {activeTab === 'ranking' && <LeaderboardTab />}
-
-        {/* Floating Chatbot Widget */}
-        <button className="fixed bottom-7 right-7 bg-blue-600 text-white px-4 h-11 rounded-full shadow-lg shadow-blue-200 flex items-center justify-center text-sm font-bold hover:bg-blue-700 transition-colors z-50 cursor-pointer">
-          Hỏi Biola / Ask Biola
-        </button>
+        </AppContentErrorBoundary>
       </main>
 
       {/* THANH ĐIỀU HƯỚNG ĐIỆN THOẠI */}
@@ -2258,5 +2275,5 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script><script src="./history.js?v=20261015"></script>
+</script><script src="./history.js?v=20261015-NAV-V2"></script>
 </body></html>
