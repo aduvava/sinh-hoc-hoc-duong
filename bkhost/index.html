@@ -4,30 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BioBilingual - Sinh học song ngữ</title>
-<script>
-(function(){
-  const seen = [];
-  function show(message){
-    const line=String(message||'').slice(0,1400);
-    if(!line||seen.includes(line))return;
-    seen.push(line);
-    if(!document.body){document.addEventListener('DOMContentLoaded',()=>show(line),{once:true});return;}
-    let panel=document.getElementById('bio-diagnostic');
-    if(!panel){panel=document.createElement('div');panel.id='bio-diagnostic';panel.style.cssText='position:fixed!important;z-index:2147483647!important;inset:auto 12px 12px 12px!important;max-height:60vh!important;overflow:auto!important;background:#fff1f2!important;color:#9f1239!important;padding:18px!important;border:2px solid #fb7185!important;border-radius:14px!important;font:14px/1.5 monospace!important';document.body.appendChild(panel);}
-    panel.textContent='BioBilingual diagnostic: '+seen.join(' | ');
-  }
-  window.addEventListener('error',e=>show('Window error: '+e.message+' @ '+(e.filename||'')+':'+(e.lineno||'')+':'+(e.colno||'')));
-  window.addEventListener('unhandledrejection',e=>show('Unhandled rejection: '+(e.reason?.message||e.reason)));
-  const oldError=console.error.bind(console);
-  console.error=(...args)=>{const msg=args.map(x=>x?.message||String(x)).join(' ');if(/SyntaxError|ParseError|Babel|ReferenceError|error/i.test(msg))show('Console error: '+msg);oldError(...args);};
-  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{const root=document.getElementById('root'); if(!root?.children?.length)show('No visible React root after 8 seconds. React '+typeof window.React+'; ReactDOM '+typeof window.ReactDOM+'; Babel '+typeof window.Babel+'; root '+!!root);},8000);});
-})();
-</script>
 
 <script defer src="https://cdn.tailwindcss.com"></script>
-<script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script defer crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script defer crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script defer src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"); html{font-size:90%} body{margin:0;background:#edf6ff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif} .hide-scrollbar::-webkit-scrollbar{display:none} .hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none} .line-clamp-3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden} .text-slate-400,.text-slate-500,.text-gray-400,.text-gray-500,.text-blue-100,.text-blue-50\/95,[class*=" text-slate-400"],[class*=" text-slate-500"],[class*=" text-gray-400"],[class*=" text-gray-500"]{font-family:"Be Vietnam Pro",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:500;letter-spacing:.005em} .text-slate-400,.text-gray-400{font-weight:400} .muted-reading{font-family:"Be Vietnam Pro",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:500;letter-spacing:.005em}</style>
 <script>
@@ -69,7 +50,7 @@ body, #root > div, #root main { background: linear-gradient(160deg, #fffdf0 0%, 
 .lesson-scroller::-webkit-scrollbar-thumb { background: #6f95d8; border-radius: 999px; border: 2px solid #e7f0df; }
 </style>
 </head>
-<body><div id="bio-loading-banner" style="padding:28px;position:relative;z-index:1;font:600 17px Arial;color:#153c35;background:#edf6ff">Đang tải BioBilingual... Nếu màn hình không hiển thị trong 15 giây, hãy kiểm tra mạng và thử tải lại trang.</div><div id="root"></div>
+<body><div id="bio-loading-banner" style="padding:28px;position:relative;z-index:1;font:600 17px Arial;color:#153c35;background:#edf6ff">Đang tải BioBilingual…</div><div id="root"></div>
 <script>(function(){var banner=document.getElementById('bio-loading-banner'),root=document.getElementById('root');new MutationObserver(function(){if(root.children.length){banner.remove();}}).observe(root,{childList:true});})();</script>
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo}=React;
@@ -2277,19 +2258,5 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script><script src="./history.js?v=20261015"></script><script>
-(function(){
-  window.addEventListener('DOMContentLoaded',function(){
-    var report=function(t){var e=document.createElement('div');e.style.cssText='padding:15px;color:#9f1239;background:#fff1f2;font:15px monospace;position:relative;z-index:999999';e.textContent=t;document.body.prepend(e);};
-    if(!window.Babel)report('DIAG: Babel not loaded; React='+typeof React+', ReactDOM='+typeof ReactDOM);
-    else {
-      try{
-        var script=document.querySelector('script[type="text/babel"]');
-        var result=window.Babel.transform(script.textContent,{presets:['react']});
-        if(!result.code)report('DIAG: Babel returned empty code.');
-      }catch(error){report('DIAG Babel transform: '+(error?.stack||error?.message||error));}
-    }
-  });
-})();
-</script>
+</script><script src="./history.js?v=20261015"></script>
 </body></html>
