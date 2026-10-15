@@ -447,11 +447,12 @@ const getEntertainmentMime = (item = {}) => {
   const dataMime = (source.match(/^data:([^;,]+)/i) || [])[1]?.toLowerCase() || '';
   if (dataMime.startsWith('video/')) return dataMime;
   const declaredMime = String(item?.mime || '').toLowerCase();
-  if (item?.type === 'video') return declaredMime.startsWith('video/') ? declaredMime : 'video/mp4';
+  if (declaredMime.startsWith('video/')) return declaredMime;
   const cleanSource = source.split(/[?#]/)[0].toLowerCase();
   const extension = (cleanSource.match(/\.([a-z0-9]+)$/i) || [])[1] || '';
   const videoTypes = { mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime', m4v: 'video/x-m4v' };
   if (videoTypes[extension]) return videoTypes[extension];
+  if (item?.type === 'video') return 'video/mp4';
   if (dataMime) return dataMime;
   return declaredMime || 'audio/mpeg';
 };
