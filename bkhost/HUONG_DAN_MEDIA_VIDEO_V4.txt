@@ -1,0 +1,17 @@
+HƯỚNG DẪN CẬP NHẬT BIOBILINGUAL TRÊN BKHOST
+
+Bản MEDIA V4 sửa lỗi video ở mục Giải trí: trang quản trị nhận tệp âm thanh và video, còn trang học sinh hiển thị đúng trình phát theo loại tệp. Bản này giữ nguyên cập nhật cây theo ngày trong tuần và chuỗi ngày tưới.
+
+CÀI ĐẶT
+1. Sao lưu các tệp hiện tại trong thư mục public_html.
+2. Giải nén gói này trên máy.
+3. Tải index.html, history.js và BIO_VERSION.txt vào thư mục public_html, chọn ghi đè.
+4. Tải admin/index.html vào thư mục public_html/admin/, chọn ghi đè.
+5. Không xóa thư mục admin hiện có hoặc các tệp khác của website.
+6. Mở https://biobilingual.top/BIO_VERSION.txt và xác nhận phiên bản 20261015-MEDIA-V4. Sau đó tải lại website; trên điện thoại, hãy làm mới trang hoặc xóa dữ liệu bộ nhớ đệm nếu vẫn còn mã cũ.
+
+TẢI VIDEO
+Trong trang quản trị, mở mục Giải trí, chọn loại Video, tải video lên và lưu. Video được lưu trong kho học liệu hiện có; giới hạn kích thước hiện tại là 50 MB. Âm thanh vẫn được lưu và phát như trước.
+
+Nếu giao diện quản trị không mở được, dùng nút Quay lại và đăng nhập lại sau khi đã tải lên cả hai tệp index.html.
+Nhận diện video ưu tiên MIME nhúng trong data URL, MIME khai báo và phần mở rộng như .mp4 hoặc .webm, để các mục video cũ cũng được mở bằng trình phát video.

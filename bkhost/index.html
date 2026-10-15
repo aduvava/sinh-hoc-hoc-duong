@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BioBilingual - Sinh học song ngữ</title>
+<meta name="biobilingual-build" content="20261015-LOADING-VOCAB-V5" />
 
 <script defer src="https://cdn.tailwindcss.com"></script>
 <script defer crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
@@ -44,19 +45,25 @@ div.max-w-6xl.mx-auto.pb-10.animate-fade-in > section.p-6.md\:p-8 > div.text-cen
 section > div.grid.grid-cols-1.lg\:grid-cols-\[\.9fr_1\.1fr\] > div > div:last-child { flex: 1; }
 }
 body, #root > div, #root main { background: linear-gradient(160deg, #fffdf0 0%, #fff6c8 34%, #eaf2a4 68%, #cce68a 100%) !important; }
+body:not(.bio-app-ready) { min-height: 100vh; min-height: 100dvh; background: #fff !important; }
+body:not(.bio-app-ready) #root { background: #fff !important; }
 .lesson-scroller { scrollbar-width: thin; scrollbar-color: #6f95d8 #e7f0df; }
 .lesson-scroller::-webkit-scrollbar { height: 8px; }
 .lesson-scroller::-webkit-scrollbar-track { background: #e7f0df; border-radius: 999px; }
 .lesson-scroller::-webkit-scrollbar-thumb { background: #6f95d8; border-radius: 999px; border: 2px solid #e7f0df; }
 </style>
 </head>
-<body><div id="bio-loading-banner" style="padding:28px;position:relative;z-index:1;font:600 17px Arial;color:#153c35;background:#edf6ff">Đang tải BioBilingual…</div><div id="root"></div>
-<script>(function(){var banner=document.getElementById('bio-loading-banner'),root=document.getElementById('root');new MutationObserver(function(){if(root.children.length){banner.remove();}}).observe(root,{childList:true});})();</script>
+<body><div id="bio-loading-banner" style="padding:28px;position:relative;z-index:1;font:600 17px Arial;color:#153c35;background:#fff">Đang tải BioBilingual…</div><div id="root"></div>
+<script>(function(){var banner=document.getElementById('bio-loading-banner'),root=document.getElementById('root');var observer=new MutationObserver(function(){if(root.firstElementChild){document.body.classList.add('bio-app-ready');banner.remove();observer.disconnect();}});observer.observe(root,{childList:true});})();</script>
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo}=React;
 const BIO_SHARED_API = 'https://rglsppkyxubpmbebdobe.supabase.co/functions/v1/biobilingual-api';
 const BIO_GOOGLE_CLIENT_ID = '519568222612-mvds8a054h1hn49ej5guk1hk9piv0arb.apps.googleusercontent.com';
 const BIO_CLASS_SUBJECTS = ['Toán 1','Toán 2','Hóa','Sinh','Văn 1','Văn 2','Sử','Địa','Khác'];
+const readStoredArray = (key, fallback = []) => {
+  try { const value = JSON.parse(localStorage.getItem(key) || 'null'); return Array.isArray(value) ? value : fallback; }
+  catch { return fallback; }
+};
 const readGoogleAuth = () => {
   try {
     const auth = JSON.parse(localStorage.getItem('bioedu_google_auth') || 'null');
@@ -87,7 +94,7 @@ const assignmentIsAvailable = (item,now=Date.now()) => {
 const assignmentStartLabel = item => item?.releaseAt ? new Date(item.releaseAt).toLocaleString('vi-VN') : '';
 const recordLearningResult = async result => {
   let current = [];
-  try { current = JSON.parse(localStorage.getItem('bioedu_results') || '[]'); } catch {}
+  try { current = readStoredArray('bioedu_results'); } catch {}
   const next = [result, ...current.filter(item => item.id !== result.id)].slice(0, 3000);
   localStorage.setItem('bioedu_results', JSON.stringify(next));
   const authToken = getGoogleAuthToken();
@@ -137,7 +144,20 @@ const vocabPresentation = {
   'Khuếch tán thụ động': { en:'passive diffusion', pos:'noun phrase', pronunciation:'/ˈpæsɪv dɪˈfjuːʒən/', meaning:'The movement of particles from high to low concentration without energy.' },
   'Vận chuyển chủ động': { en:'active transport', pos:'noun phrase', pronunciation:'/ˈæktɪv ˈtrænspɔːrt/', meaning:'The movement of substances across a membrane using cellular energy.' }
 };
-const vocabInfo = word => { const base = vocabPresentation[word.term] || { en: word.term, pos:'noun', pronunciation:`/${word.term}/`, meaning:word.def || `A biology term used to describe ${word.term.toLowerCase()}.` }; return { ...base, en:word.term||base.en, pos:word.pos||base.pos, pronunciation:word.pronunciation||base.pronunciation, meaning:word.meaning||base.meaning, vi:word.def||word.meaning||'', image:word.image||'' }; };
+const vocabPartOfSpeechLabel = value => {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Chưa có từ loại';
+  const key = raw.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  const labels = {
+    n: 'Danh từ', noun: 'Danh từ', np: 'Cụm danh từ', 'noun phrase': 'Cụm danh từ',
+    v: 'Động từ', verb: 'Động từ', vp: 'Cụm động từ', 'verb phrase': 'Cụm động từ',
+    adj: 'Tính từ', adjective: 'Tính từ', adv: 'Trạng từ', adverb: 'Trạng từ',
+    'plural noun': 'Danh từ số nhiều', prep: 'Giới từ', preposition: 'Giới từ',
+    pron: 'Đại từ', pronoun: 'Đại từ', conjunction: 'Liên từ'
+  };
+  return labels[key] || raw;
+};
+const vocabInfo = word => { const base = vocabPresentation[word.term] || { en: word.term, pos:'', pronunciation:`/${word.term}/`, meaning:word.def || `A biology term used to describe ${word.term.toLowerCase()}.` }; return { ...base, en:word.term||base.en, pos:vocabPartOfSpeechLabel(word.pos||word.partOfSpeech||base.pos), pronunciation:word.pronunciation||base.pronunciation, meaning:word.meaning||base.meaning, vi:word.def||word.meaning||'', image:word.image||'' }; };
 const vocabImage = 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=900&q=80';
 
 // Chương và bài chỉ lấy từ trang Admin.
@@ -250,14 +270,14 @@ const questionBank = [
 
 const VocabSystem = ({ selectedPath, onPathChange, initialGrade = '10' }) => {
   const [step, setStep] = useState('config'); // config, study, results
-  const [adminVocabSets, setAdminVocabSets] = useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_vocab_bank') || '[]'); } catch { return []; } });
+  const [adminVocabSets, setAdminVocabSets] = useState(() => { try { return readStoredArray('bioedu_vocab_bank'); } catch { return []; } });
   useEffect(() => {
-    const sync = () => { try { setAdminVocabSets(JSON.parse(localStorage.getItem('bioedu_vocab_bank') || '[]')); } catch {} };
+    const sync = () => { try { setAdminVocabSets(readStoredArray('bioedu_vocab_bank')); } catch {} };
     window.addEventListener('storage', sync); window.addEventListener('bioedu-shared-update', sync);
     return () => { window.removeEventListener('storage', sync); window.removeEventListener('bioedu-shared-update', sync); };
   }, []);
   useEffect(() => {
-    const goBack = () => { if (step !== 'config') setStep('config'); };
+    const goBack = () => { if (step !== 'config') setStep('config'); else window.dispatchEvent(new Event('bioedu-go-home')); };
     window.addEventListener('bioedu-local-back', goBack);
     return () => window.removeEventListener('bioedu-local-back', goBack);
   }, [step]);
@@ -653,7 +673,7 @@ const VocabSystem = ({ selectedPath, onPathChange, initialGrade = '10' }) => {
                     <button onClick={() => speakWord(vocabInfo(w).en, w.id)} className="mt-0.5 text-blue-500 hover:text-blue-700 text-lg shrink-0" title="Nghe đọc / Listen">🔊</button>
                     <div className="min-w-0">
                       <div className="font-extrabold text-gray-900 text-lg md:text-xl break-words">{w.term}</div>
-                      <div className="text-sm text-slate-400 mt-1">Thuật ngữ Sinh học</div>
+                      <div className="text-sm text-slate-400 mt-1">{vocabPartOfSpeechLabel(w.pos)}</div>
                     </div>
                   </div>
 
@@ -664,7 +684,7 @@ const VocabSystem = ({ selectedPath, onPathChange, initialGrade = '10' }) => {
 
                   <div>
                     <div className="md:hidden text-xs font-bold text-slate-400 mb-1">LOẠI TỪ</div>
-                    <span className="inline-flex px-3 py-2 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold tracking-wide">THUẬT NGỮ</span>
+                    <span className="inline-flex px-3 py-2 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold tracking-wide">{vocabPartOfSpeechLabel(w.pos)}</span>
                   </div>
 
                   <div className="flex md:justify-center items-center">
@@ -846,9 +866,9 @@ const MindMapShowcase=({selectedGrade,selectedChapterTitle,selectedLesson})=>{
 const sanitizeTheoryHtml = html => { const doc=new DOMParser().parseFromString(html||'','text/html');doc.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(node=>node.remove());doc.querySelectorAll('*').forEach(node=>[...node.attributes].forEach(attribute=>{if(attribute.name.toLowerCase().startsWith('on')||/javascript:/i.test(attribute.value))node.removeAttribute(attribute.name)}));return doc.body.innerHTML; };
 const KnowledgeContentPanel = ({ selectedGrade, selectedChapterTitle, selectedLesson }) => {
   const fallback=[{id:'default',title:'Tế bào và thành phần hoá học',description:'Tài liệu ôn tập nền tảng.',content:'Tế bào là đơn vị cấu trúc và chức năng cơ bản của cơ thể sống. Nước là dung môi cho nhiều phản ứng sinh hoá; các nguyên tố hoá học tham gia cấu tạo nên đại phân tử.'}];
-  const [files,setFiles]=useState(()=>{try{return JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback}catch{return fallback}});
+  const [files,setFiles]=useState(()=>{try{return readStoredArray('bioedu_theory_files',fallback)}catch{return fallback}});
   const [selected,setSelected]=useState(0);
-  useEffect(()=>{const sync=()=>{try{setFiles(JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback);setSelected(0)}catch{}};window.addEventListener('storage',sync);window.addEventListener('bioedu-shared-update',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bioedu-shared-update',sync)}},[]);
+  useEffect(()=>{const sync=()=>{try{setFiles(readStoredArray('bioedu_theory_files',fallback));setSelected(0)}catch{}};window.addEventListener('storage',sync);window.addEventListener('bioedu-shared-update',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bioedu-shared-update',sync)}},[]);
   useEffect(()=>setSelected(0),[selectedGrade,selectedChapterTitle,selectedLesson]);
   const normalized=value=>String(value||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const matches=files.filter(item=>{const gradeOk=!item.grade||String(item.grade)===String(selectedGrade);const chapterOk=!item.chapter||!selectedChapterTitle||normalized(item.chapter)===normalized(selectedChapterTitle)||normalized(item.chapter).includes(normalized(selectedChapterTitle))||normalized(selectedChapterTitle).includes(normalized(item.chapter));const lessonOk=!item.lesson||!selectedLesson||normalized(item.lesson)===normalized(selectedLesson)||normalized(item.lesson).includes(normalized(selectedLesson))||normalized(selectedLesson).includes(normalized(item.lesson));return gradeOk&&lessonOk&&(selectedLesson?true:chapterOk)});
@@ -1003,7 +1023,7 @@ const MaterialsTab = ({ selectedPath, onPathChange }) => {
   const [selectedMaterialGrade, setSelectedMaterialGrade] = useState(selectedPath?.grade || '10');
   const [selectedMaterialChapter, setSelectedMaterialChapter] = useState(selectedPath?.chapterId || null);
   const [selectedMaterialLesson, setSelectedMaterialLesson] = useState(selectedPath?.lesson || '');
-  const [uploadedMaterials, setUploadedMaterials] = useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_materials_library') || '[]'); } catch { return []; } });
+  const [uploadedMaterials, setUploadedMaterials] = useState(() => { try { return readStoredArray('bioedu_materials_library'); } catch { return []; } });
   const assignmentNow = useAssignmentClock();
   useEffect(() => {
     const goBack = () => { if (worksheetExamItem) setWorksheetExamItem(null); else setActivePin(null); };
@@ -1011,7 +1031,7 @@ const MaterialsTab = ({ selectedPath, onPathChange }) => {
     return () => window.removeEventListener('bioedu-local-back', goBack);
   }, [worksheetExamItem]);
   useEffect(() => {
-    const sync = () => { try { setUploadedMaterials(JSON.parse(localStorage.getItem('bioedu_materials_library') || '[]')); } catch {} };
+    const sync = () => { try { setUploadedMaterials(readStoredArray('bioedu_materials_library')); } catch {} };
     window.addEventListener('storage', sync); window.addEventListener('bioedu-shared-update', sync);
     return () => { window.removeEventListener('storage', sync); window.removeEventListener('bioedu-shared-update', sync); };
   }, []);
@@ -1289,8 +1309,8 @@ const TheoryPanel = ({ selectedPath, onExam }) => {
 
 const TheoryFilesPanel = ({ onExam }) => {
   const fallback=[{id:'default',title:'Tế bào và thành phần hoá học',description:'Tài liệu ôn tập nền tảng.',content:'Tế bào là đơn vị cấu trúc và chức năng cơ bản của cơ thể sống. Nước là dung môi cho nhiều phản ứng sinh hoá; các nguyên tố hoá học tham gia cấu tạo nên đại phân tử.'}];
-  const [files,setFiles]=useState(()=>{try{return JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback}catch{return fallback}});const [selected,setSelected]=useState(0);
-  useEffect(()=>{const sync=()=>{try{setFiles(JSON.parse(localStorage.getItem('bioedu_theory_files')||'null')||fallback)}catch{}};window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync)},[]);
+  const [files,setFiles]=useState(()=>{try{return readStoredArray('bioedu_theory_files',fallback)}catch{return fallback}});const [selected,setSelected]=useState(0);
+  useEffect(()=>{const sync=()=>{try{setFiles(readStoredArray('bioedu_theory_files',fallback))}catch{}};window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync)},[]);
   const file=files[selected]||files[0];
   return <div className="max-w-6xl mx-auto pb-10 animate-fade-in"><div className="bg-white border border-blue-100 rounded-2xl p-2 flex justify-center gap-2"><button className="px-7 py-3 rounded-xl bg-blue-600 text-white font-bold">Lý thuyết / Theory</button><button onClick={onExam} className="px-7 py-3 rounded-xl text-slate-600 font-bold hover:bg-blue-50">Đề thi / Exam</button></div><div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 mt-5"><aside className="bg-white border border-slate-200 rounded-2xl p-4"><p className="text-sm font-extrabold text-slate-700 px-2 mb-3">Tài liệu lý thuyết</p><div className="space-y-2">{files.map((item,i)=><button key={item.id||i} onClick={()=>setSelected(i)} className={`w-full text-left p-3 rounded-xl border ${selected===i?'bg-blue-50 border-blue-200':'border-transparent hover:bg-slate-50'}`}><p className="font-bold text-slate-800 text-sm">{item.title}</p><p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p></button>)}</div></aside><article className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8"><p className="text-xs uppercase tracking-wider font-bold text-blue-600">Tài liệu lý thuyết</p><h3 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-2">{file.title}</h3><p className="text-slate-500 mt-2">{file.description}</p><div className="mt-6 pt-6 border-t border-slate-100 whitespace-pre-line text-slate-700 leading-8">{file.content}</div><div className="mt-8 pt-5 border-t border-slate-100 flex justify-end"><button onClick={onExam} className="px-5 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700">Làm đề thi / Take exam</button></div></article></div></div>;
 };
@@ -1313,11 +1333,11 @@ const QuestionBankTab = ({ selectedPath }) => {
     window.addEventListener('bioedu-local-back', goBack);
     return () => window.removeEventListener('bioedu-local-back', goBack);
   }, []);
-  const [uploadedExamQuestions, setUploadedExamQuestions] = useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_exam_bank') || '[]'); } catch { return []; } });
+  const [uploadedExamQuestions, setUploadedExamQuestions] = useState(() => { try { return readStoredArray('bioedu_exam_bank'); } catch { return []; } });
   const assignmentNow = useAssignmentClock();
   const autoSubmittedRef = useRef(false);
   useEffect(() => {
-    const sync = () => { try { setUploadedExamQuestions(JSON.parse(localStorage.getItem('bioedu_exam_bank') || '[]')); } catch {} };
+    const sync = () => { try { setUploadedExamQuestions(readStoredArray('bioedu_exam_bank')); } catch {} };
     window.addEventListener('storage', sync); window.addEventListener('bioedu-shared-update', sync);
     return () => { window.removeEventListener('storage', sync); window.removeEventListener('bioedu-shared-update', sync); };
   }, []);
@@ -1638,17 +1658,33 @@ const NavIcon = ({ name, active }) => {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-current">{paths[name]}</svg>;
 };
 
+const getEntertainmentMime = (item = {}) => {
+  const source = String(item?.source || '');
+  const dataMime = (source.match(/^data:([^;,]+)/i) || [])[1]?.toLowerCase() || '';
+  if (dataMime.startsWith('video/')) return dataMime;
+  const declaredMime = String(item?.mime || '').toLowerCase();
+  if (declaredMime.startsWith('video/')) return declaredMime;
+  const cleanSource = source.split(/[?#]/)[0].toLowerCase();
+  const extension = (cleanSource.match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+  const videoTypes = { mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime', m4v: 'video/x-m4v' };
+  if (videoTypes[extension]) return videoTypes[extension];
+  if (item?.type === 'video') return 'video/mp4';
+  if (dataMime) return dataMime;
+  return declaredMime || 'audio/mpeg';
+};
+const isEntertainmentVideo = (item) => getEntertainmentMime(item).startsWith('video/');
+
 const EntertainmentTab = () => {
-  const [songs, setSongs] = React.useState(() => { try { return JSON.parse(localStorage.getItem('bioedu_entertainment') || '[]') || []; } catch { return []; } });
+  const [songs, setSongs] = React.useState(() => { try { return readStoredArray('bioedu_entertainment') || []; } catch { return []; } });
   React.useEffect(() => {
-    const refresh = () => { try { setSongs(JSON.parse(localStorage.getItem('bioedu_entertainment') || '[]') || []); } catch {} };
+    const refresh = () => { try { setSongs(readStoredArray('bioedu_entertainment') || []); } catch {} };
     window.addEventListener('storage', refresh); window.addEventListener('bioedu-shared-update', refresh);
     refresh(); return () => { window.removeEventListener('storage', refresh); window.removeEventListener('bioedu-shared-update', refresh); };
   }, []);
   return <section className="px-5 md:px-10 pb-12">
     <div className="rounded-3xl border border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 via-white to-sky-50 p-6 md:p-8 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.2em] font-extrabold text-fuchsia-600">Góc giải trí / Entertainment</p><h3 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">Âm nhạc sinh học</h3><p className="mt-2 text-slate-600">Thư giãn cùng những bài nhạc do giáo viên chia sẻ.</p></div><span className="w-14 h-14 rounded-2xl bg-fuchsia-100 text-fuchsia-600 grid place-items-center text-2xl">♫</span></div>
-      {songs.length ? <div className="mt-7 grid gap-4 md:grid-cols-2">{songs.map((song, index) => <article key={song.id || index} className="rounded-2xl bg-white/90 border border-white shadow-sm p-4"><div className="flex items-start gap-3"><span className="w-10 h-10 rounded-xl bg-fuchsia-100 text-fuchsia-700 grid place-items-center font-extrabold">♫</span><div className="min-w-0"><h4 className="font-extrabold text-slate-900 truncate">{song.title || 'Bài nhạc'}</h4><p className="text-sm text-slate-500 truncate">{song.artist || 'BioBilingual'}</p></div></div><audio className="w-full mt-4" controls preload="metadata" src={song.source}/></article>)}</div> : <div className="mt-7 rounded-2xl border border-dashed border-fuchsia-200 bg-white/70 p-8 text-center text-slate-500">Giáo viên chưa tải bài nhạc nào. Hãy quay lại sau nhé!</div>}
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.2em] font-extrabold text-fuchsia-600">Góc giải trí / Entertainment</p><h3 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">Âm nhạc & video sinh học</h3><p className="mt-2 text-slate-600">Nghe nhạc và xem video do giáo viên chia sẻ.</p></div><span className="w-14 h-14 rounded-2xl bg-fuchsia-100 text-fuchsia-600 grid place-items-center text-2xl">♫ ▶</span></div>
+      {songs.length ? <div className="mt-7 grid gap-4 md:grid-cols-2">{songs.map((song, index) => { const isVideo = isEntertainmentVideo(song); return <article key={song.id || index} className="rounded-2xl bg-white/90 border border-white shadow-sm p-4"><div className="flex items-start gap-3"><span className="w-10 h-10 rounded-xl bg-fuchsia-100 text-fuchsia-700 grid place-items-center font-extrabold">{isVideo ? '▶' : '♫'}</span><div className="min-w-0"><h4 className="font-extrabold text-slate-900 truncate">{song.title || (isVideo ? 'Video sinh học' : 'Bài nhạc')}</h4><p className="text-sm text-slate-500 truncate">{song.artist || 'BioBilingual'}</p></div></div>{isVideo ? <video className="w-full mt-4 max-h-[28rem] rounded-xl bg-black" controls playsInline preload="metadata" src={song.source}/> : <audio className="w-full mt-4" controls preload="metadata" src={song.source}/>}</article>;})}</div> : <div className="mt-7 rounded-2xl border border-dashed border-fuchsia-200 bg-white/70 p-8 text-center text-slate-500">Giáo viên chưa tải nhạc hoặc video nào. Hãy quay lại sau nhé!</div>}
     </div>
   </section>;
 };
@@ -1758,6 +1794,16 @@ const BioLogo = () => (
   </span>
 );
 
+class AppContentErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) { console.error('BioBilingual page render failed:', error, info?.componentStack || ''); }
+  render() {
+    if (this.state.hasError) return <section role="alert" className="mx-5 md:mx-10 my-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm"><h2 className="text-xl font-extrabold text-amber-900">Mục này chưa thể mở / This section could not load</h2><p className="mt-2 text-sm text-amber-800">Hãy tải lại trang để thử lại. / Reload the page to try again.</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-xl bg-emerald-700 px-5 py-3 font-extrabold text-white">Tải lại trang / Reload</button></section>;
+    return this.props.children;
+  }
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const mainRef = useRef(null);
@@ -1784,9 +1830,76 @@ function App() {
   const [selectedHomeGrade, setSelectedHomeGrade] = useState('10');
   const [selectedHomeLesson, setSelectedHomeLesson] = useState(courseData['10']?.[0]?.lessons?.[0] || '');
   const [showBioFact, setShowBioFact] = useState(false);
-  const plantTodayKey = new Date().toLocaleDateString('en-CA');
-  const [plantWatered, setPlantWatered] = useState(() => localStorage.getItem('bioedu_plant_watered') === plantTodayKey);
+  const localPlantDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const readPlantWaterHistory = () => {
+    let dates = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem('bioedu_plant_water_history') || '[]');
+      if (Array.isArray(saved)) dates = saved.filter(value => typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value));
+    } catch {}
+    try {
+      const today = new Date();
+      const todayKey = localPlantDateKey(today);
+      const legacyWatered = localStorage.getItem('bioedu_plant_watered');
+      if (legacyWatered === todayKey || legacyWatered === today.toLocaleDateString('en-CA')) dates.push(todayKey);
+    } catch {}
+    const history = [...new Set(dates)].sort();
+    try {
+      const storageKey = 'bioedu_plant_water_history';
+      const savedHistory = JSON.stringify(history);
+      if (localStorage.getItem(storageKey) !== savedHistory) localStorage.setItem(storageKey, savedHistory);
+    } catch {}
+    return history;
+  };
+  const getPlantStreak = (dates, todayKey) => {
+    const wateredDates = new Set(dates);
+    const cursor = new Date(`${todayKey}T12:00:00`);
+    if (!wateredDates.has(todayKey)) cursor.setDate(cursor.getDate() - 1);
+    let streak = 0;
+    while (wateredDates.has(localPlantDateKey(cursor))) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  };
+  const [plantTodayKey, setPlantTodayKey] = useState(() => localPlantDateKey(new Date()));
+  useEffect(() => {
+    const refreshPlantDay = () => {
+      const currentDay = localPlantDateKey(new Date());
+      setPlantTodayKey(previous => previous === currentDay ? previous : currentDay);
+    };
+    const timer = window.setInterval(refreshPlantDay, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const [plantWaterHistory, setPlantWaterHistory] = useState(() => readPlantWaterHistory());
   const [plantAge, setPlantAge] = useState(() => Math.max(7, Number(localStorage.getItem('bioedu_plant_age')) || 7));
+  const plantWatered = plantWaterHistory.includes(plantTodayKey);
+  const plantDateParts = plantTodayKey.split('-').map(Number);
+  const plantTodayDate = new Date(plantDateParts[0], plantDateParts[1] - 1, plantDateParts[2]);
+  const plantWeekStart = new Date(plantTodayDate);
+  plantWeekStart.setDate(plantWeekStart.getDate() - ((plantWeekStart.getDay() + 6) % 7));
+  const plantWateredSet = new Set(plantWaterHistory);
+  const plantWeekDays = ['T2','T3','T4','T5','T6','T7','CN'].map((label, index) => {
+    const date = new Date(plantWeekStart);
+    date.setDate(date.getDate() + index);
+    const dateKey = localPlantDateKey(date);
+    return { label, dateKey, isToday: dateKey === plantTodayKey, watered: plantWateredSet.has(dateKey) };
+  });
+  const plantStreak = getPlantStreak(plantWaterHistory, plantTodayKey);
+  useEffect(() => {
+    const syncPlantData = (event) => {
+      if (event?.key && !['bioedu_plant_water_history', 'bioedu_plant_watered', 'bioedu_plant_age'].includes(event.key)) return;
+      setPlantWaterHistory(readPlantWaterHistory());
+      setPlantAge(Math.max(7, Number(localStorage.getItem('bioedu_plant_age')) || 7));
+    };
+    window.addEventListener('storage', syncPlantData);
+    return () => window.removeEventListener('storage', syncPlantData);
+  }, []);
   useEffect(() => {
     const refreshCourse = (event) => {
       if (event?.key && event.key !== 'bioedu_course_structure') return;
@@ -1899,7 +2012,7 @@ function App() {
     setProfileSaving(true);
     setAuthError('');
     const studentId = next.email;
-    const currentStudents = (() => { try { return JSON.parse(localStorage.getItem('bioedu_students') || '[]'); } catch { return []; } })();
+    const currentStudents = (() => { try { return readStoredArray('bioedu_students'); } catch { return []; } })();
     const existing = currentStudents.find(student => student.id === studentId);
     const studentRecord = { ...next, id: studentId, grade: next.block, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
     try {
@@ -1931,6 +2044,11 @@ function App() {
     window.requestAnimationFrame(scrollMainToTop);
   };
   useEffect(() => {
+    const returnHome = () => { setActiveTab('home'); window.requestAnimationFrame(scrollMainToTop); };
+    window.addEventListener('bioedu-go-home', returnHome);
+    return () => window.removeEventListener('bioedu-go-home', returnHome);
+  }, []);
+  useEffect(() => {
     const frame = window.requestAnimationFrame(scrollMainToTop);
     return () => window.cancelAnimationFrame(frame);
   }, [activeTab]);
@@ -1941,12 +2059,19 @@ function App() {
     fetch(`${BIO_SHARED_API}/api/visit`, { method: 'POST' }).catch(() => {});
   }, []);
   const waterPlantToday = () => {
-    if (plantWatered) return;
-    const nextAge = plantAge + 1;
+    const currentHistory = readPlantWaterHistory();
+    if (currentHistory.includes(plantTodayKey)) {
+      setPlantWaterHistory(currentHistory);
+      return;
+    }
+    const nextHistory = [...new Set([...currentHistory, plantTodayKey])].sort();
+    const currentAge = Math.max(7, Number(localStorage.getItem('bioedu_plant_age')) || plantAge);
+    const nextAge = currentAge + 1;
+    localStorage.setItem('bioedu_plant_water_history', JSON.stringify(nextHistory));
     localStorage.setItem('bioedu_plant_watered', plantTodayKey);
     localStorage.setItem('bioedu_plant_age', String(nextAge));
+    setPlantWaterHistory(nextHistory);
     setPlantAge(nextAge);
-    setPlantWatered(true);
   };
 
   const renderDifficultyBar = (level) => {
@@ -1998,13 +2123,13 @@ function App() {
               <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full border-[22px] border-white/15"></div><div className="absolute -left-10 -bottom-12 h-32 w-32 rounded-full bg-yellow-300/20"></div><div className="absolute right-20 bottom-8 text-[7rem] leading-none text-white/[0.08]">♧</div>
               <div className="relative flex h-full flex-col justify-between gap-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div><p className="mt-1 text-2xl md:text-3xl font-extrabold tracking-tight">Cây {plantAge} ngày tuổi</p></div>
+                  <div className="min-w-0"><p className="mt-1 text-2xl md:text-3xl font-extrabold tracking-tight">Cây {plantAge} ngày tuổi</p><p className="mt-1 text-xs font-bold text-emerald-50">🔥 Chuỗi {plantStreak} ngày liên tiếp</p></div>
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/30 bg-white/20 text-2xl shadow-sm transition-transform ${plantWatered ? 'scale-110' : ''}`}>{plantWatered ? '🌿' : '🌱'}</span>
                 </div>
 
                 <div className="relative pt-1">
                   <div className="absolute left-4 right-4 top-5 h-1 rounded-full bg-white/25"></div>
-                  <div className="relative grid grid-cols-7 gap-1">{['T2','T3','T4','T5','T6','T7','CN'].map((day,index) => <div key={day} className="flex flex-col items-center"><span className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm shadow-sm ${index === 6 ? 'border-lime-100 bg-white text-green-600' : 'border-white/35 bg-emerald-600/35 text-white'}`}>{index === 6 ? (plantWatered ? '🌿' : '💧') : '✓'}</span><span className="mt-1 text-[10px] font-extrabold text-emerald-50">{day}</span></div>)}</div>
+                  <div className="relative grid grid-cols-7 gap-1">{plantWeekDays.map(day => <div key={day.dateKey} className="flex flex-col items-center"><span className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm shadow-sm ${day.isToday ? 'border-lime-100 bg-white text-green-600' : day.watered ? 'border-white/35 bg-emerald-600/35 text-white' : 'border-white/15 bg-white/10 text-white/45'}`}>{day.isToday ? (plantWatered ? '🌿' : '💧') : day.watered ? '✓' : '·'}</span><span className="mt-1 text-[10px] font-extrabold text-emerald-50">{day.label}</span></div>)}</div>
                 </div>
 
                 <div className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 p-2.5">
@@ -2135,7 +2260,7 @@ function App() {
       <main ref={mainRef} className="flex-1 overflow-y-auto relative bg-[#eef6ff] pb-20 md:pb-0">
         <div className="h-16 md:h-20 px-4 md:px-10 flex items-center justify-between border-b border-blue-100 bg-white/85 backdrop-blur-sm sticky top-0 z-10">
           <div>{activeTab !== 'home' && <button onClick={() => window.dispatchEvent(new Event('bioedu-local-back'))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base font-extrabold text-slate-600 shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"><span aria-hidden="true" className="text-lg leading-none">←</span> Quay lại / Back</button>}</div>
-          <div className="flex items-center gap-2 md:gap-4"><button className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Trợ giúp / Help</button><span className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">?</span></div>
+          <div className="flex items-center gap-2 md:gap-4"><button type="button" aria-label="Lịch sử làm bài" onClick={() => window.dispatchEvent(new Event('bioedu-open-history'))} className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Lịch sử làm bài / Attempt History</button><button type="button" aria-label="Lịch sử làm bài" onClick={() => window.dispatchEvent(new Event('bioedu-open-history'))} className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">↺</button></div>
         </div>
         
         {/* Header Tabs */}
@@ -2151,6 +2276,7 @@ function App() {
           </div>
         )}
 
+        <AppContentErrorBoundary key={activeTab}>
         {activeTab === 'home' && renderHome()}
         {activeTab === 'vocab' && <VocabSystem initialGrade={selectedHomeGrade} selectedPath={findLessonContext(selectedHomeLesson)} onPathChange={(context) => { if (context) { setSelectedHomeGrade(context.grade); setSelectedHomeLesson(context.lesson); } }} />}
         {activeTab === 'materials' && <MaterialsTab />}
@@ -2158,11 +2284,7 @@ function App() {
         {activeTab === 'library' && <QuestionBankTab />}
         
         {activeTab === 'ranking' && <LeaderboardTab />}
-
-        {/* Floating Chatbot Widget */}
-        <button className="fixed bottom-7 right-7 bg-blue-600 text-white px-4 h-11 rounded-full shadow-lg shadow-blue-200 flex items-center justify-center text-sm font-bold hover:bg-blue-700 transition-colors z-50 cursor-pointer">
-          Hỏi Biola / Ask Biola
-        </button>
+        </AppContentErrorBoundary>
       </main>
 
       {/* THANH ĐIỀU HƯỚNG ĐIỆN THOẠI */}
@@ -2258,5 +2380,5 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script><script src="./history.js?v=20261015"></script>
+</script><script src="./history.js?v=20261015-LOADING-VOCAB-V5"></script>
 </body></html>
