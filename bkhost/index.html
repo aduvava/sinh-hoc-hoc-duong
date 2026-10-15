@@ -1817,7 +1817,13 @@ function App() {
       const legacyWatered = localStorage.getItem('bioedu_plant_watered');
       if (legacyWatered === todayKey || legacyWatered === today.toLocaleDateString('en-CA')) dates.push(todayKey);
     } catch {}
-    return [...new Set(dates)].sort();
+    const history = [...new Set(dates)].sort();
+    try {
+      const storageKey = 'bioedu_plant_water_history';
+      const savedHistory = JSON.stringify(history);
+      if (localStorage.getItem(storageKey) !== savedHistory) localStorage.setItem(storageKey, savedHistory);
+    } catch {}
+    return history;
   };
   const getPlantStreak = (dates, todayKey) => {
     const wateredDates = new Set(dates);
