@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BioBilingual - Sinh học song ngữ</title>
-<meta name="biobilingual-build" content="20261015-PLANT-V3" />
+<meta name="biobilingual-build" content="20261015-MEDIA-V4" />
 
 <script defer src="https://cdn.tailwindcss.com"></script>
 <script defer crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
@@ -1643,6 +1643,21 @@ const NavIcon = ({ name, active }) => {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-current">{paths[name]}</svg>;
 };
 
+const getEntertainmentMime = (item = {}) => {
+  const source = String(item?.source || '');
+  const dataMime = (source.match(/^data:([^;,]+)/i) || [])[1]?.toLowerCase() || '';
+  if (dataMime.startsWith('video/')) return dataMime;
+  const declaredMime = String(item?.mime || '').toLowerCase();
+  if (item?.type === 'video') return declaredMime.startsWith('video/') ? declaredMime : 'video/mp4';
+  const cleanSource = source.split(/[?#]/)[0].toLowerCase();
+  const extension = (cleanSource.match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+  const videoTypes = { mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime', m4v: 'video/x-m4v' };
+  if (videoTypes[extension]) return videoTypes[extension];
+  if (dataMime) return dataMime;
+  return declaredMime || 'audio/mpeg';
+};
+const isEntertainmentVideo = (item) => getEntertainmentMime(item).startsWith('video/');
+
 const EntertainmentTab = () => {
   const [songs, setSongs] = React.useState(() => { try { return readStoredArray('bioedu_entertainment') || []; } catch { return []; } });
   React.useEffect(() => {
@@ -1652,8 +1667,8 @@ const EntertainmentTab = () => {
   }, []);
   return <section className="px-5 md:px-10 pb-12">
     <div className="rounded-3xl border border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 via-white to-sky-50 p-6 md:p-8 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.2em] font-extrabold text-fuchsia-600">Góc giải trí / Entertainment</p><h3 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">Âm nhạc sinh học</h3><p className="mt-2 text-slate-600">Thư giãn cùng những bài nhạc do giáo viên chia sẻ.</p></div><span className="w-14 h-14 rounded-2xl bg-fuchsia-100 text-fuchsia-600 grid place-items-center text-2xl">♫</span></div>
-      {songs.length ? <div className="mt-7 grid gap-4 md:grid-cols-2">{songs.map((song, index) => <article key={song.id || index} className="rounded-2xl bg-white/90 border border-white shadow-sm p-4"><div className="flex items-start gap-3"><span className="w-10 h-10 rounded-xl bg-fuchsia-100 text-fuchsia-700 grid place-items-center font-extrabold">♫</span><div className="min-w-0"><h4 className="font-extrabold text-slate-900 truncate">{song.title || 'Bài nhạc'}</h4><p className="text-sm text-slate-500 truncate">{song.artist || 'BioBilingual'}</p></div></div><audio className="w-full mt-4" controls preload="metadata" src={song.source}/></article>)}</div> : <div className="mt-7 rounded-2xl border border-dashed border-fuchsia-200 bg-white/70 p-8 text-center text-slate-500">Giáo viên chưa tải bài nhạc nào. Hãy quay lại sau nhé!</div>}
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.2em] font-extrabold text-fuchsia-600">Góc giải trí / Entertainment</p><h3 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">Âm nhạc & video sinh học</h3><p className="mt-2 text-slate-600">Nghe nhạc và xem video do giáo viên chia sẻ.</p></div><span className="w-14 h-14 rounded-2xl bg-fuchsia-100 text-fuchsia-600 grid place-items-center text-2xl">♫ ▶</span></div>
+      {songs.length ? <div className="mt-7 grid gap-4 md:grid-cols-2">{songs.map((song, index) => { const isVideo = isEntertainmentVideo(song); return <article key={song.id || index} className="rounded-2xl bg-white/90 border border-white shadow-sm p-4"><div className="flex items-start gap-3"><span className="w-10 h-10 rounded-xl bg-fuchsia-100 text-fuchsia-700 grid place-items-center font-extrabold">{isVideo ? '▶' : '♫'}</span><div className="min-w-0"><h4 className="font-extrabold text-slate-900 truncate">{song.title || (isVideo ? 'Video sinh học' : 'Bài nhạc')}</h4><p className="text-sm text-slate-500 truncate">{song.artist || 'BioBilingual'}</p></div></div>{isVideo ? <video className="w-full mt-4 max-h-[28rem] rounded-xl bg-black" controls playsInline preload="metadata" src={song.source}/> : <audio className="w-full mt-4" controls preload="metadata" src={song.source}/>}</article>;})}</div> : <div className="mt-7 rounded-2xl border border-dashed border-fuchsia-200 bg-white/70 p-8 text-center text-slate-500">Giáo viên chưa tải nhạc hoặc video nào. Hãy quay lại sau nhé!</div>}
     </div>
   </section>;
 };
@@ -2349,5 +2364,5 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script><script src="./history.js?v=20261015-PLANT-V3"></script>
+</script><script src="./history.js?v=20261015-MEDIA-V4"></script>
 </body></html>
