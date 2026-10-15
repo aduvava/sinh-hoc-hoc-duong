@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BioBilingual - Sinh học song ngữ</title>
-<meta name="biobilingual-build" content="20261015-NAV-V2" />
+<meta name="biobilingual-build" content="20261015-PLANT-V3" />
 
 <script defer src="https://cdn.tailwindcss.com"></script>
 <script defer crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
@@ -1799,9 +1799,70 @@ function App() {
   const [selectedHomeGrade, setSelectedHomeGrade] = useState('10');
   const [selectedHomeLesson, setSelectedHomeLesson] = useState(courseData['10']?.[0]?.lessons?.[0] || '');
   const [showBioFact, setShowBioFact] = useState(false);
-  const plantTodayKey = new Date().toLocaleDateString('en-CA');
-  const [plantWatered, setPlantWatered] = useState(() => localStorage.getItem('bioedu_plant_watered') === plantTodayKey);
+  const localPlantDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const readPlantWaterHistory = () => {
+    let dates = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem('bioedu_plant_water_history') || '[]');
+      if (Array.isArray(saved)) dates = saved.filter(value => typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value));
+    } catch {}
+    try {
+      const today = new Date();
+      const todayKey = localPlantDateKey(today);
+      const legacyWatered = localStorage.getItem('bioedu_plant_watered');
+      if (legacyWatered === todayKey || legacyWatered === today.toLocaleDateString('en-CA')) dates.push(todayKey);
+    } catch {}
+    return [...new Set(dates)].sort();
+  };
+  const getPlantStreak = (dates, todayKey) => {
+    const wateredDates = new Set(dates);
+    const cursor = new Date(`${todayKey}T12:00:00`);
+    if (!wateredDates.has(todayKey)) cursor.setDate(cursor.getDate() - 1);
+    let streak = 0;
+    while (wateredDates.has(localPlantDateKey(cursor))) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  };
+  const [plantTodayKey, setPlantTodayKey] = useState(() => localPlantDateKey(new Date()));
+  useEffect(() => {
+    const refreshPlantDay = () => {
+      const currentDay = localPlantDateKey(new Date());
+      setPlantTodayKey(previous => previous === currentDay ? previous : currentDay);
+    };
+    const timer = window.setInterval(refreshPlantDay, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const [plantWaterHistory, setPlantWaterHistory] = useState(() => readPlantWaterHistory());
   const [plantAge, setPlantAge] = useState(() => Math.max(7, Number(localStorage.getItem('bioedu_plant_age')) || 7));
+  const plantWatered = plantWaterHistory.includes(plantTodayKey);
+  const plantDateParts = plantTodayKey.split('-').map(Number);
+  const plantTodayDate = new Date(plantDateParts[0], plantDateParts[1] - 1, plantDateParts[2]);
+  const plantWeekStart = new Date(plantTodayDate);
+  plantWeekStart.setDate(plantWeekStart.getDate() - ((plantWeekStart.getDay() + 6) % 7));
+  const plantWateredSet = new Set(plantWaterHistory);
+  const plantWeekDays = ['T2','T3','T4','T5','T6','T7','CN'].map((label, index) => {
+    const date = new Date(plantWeekStart);
+    date.setDate(date.getDate() + index);
+    const dateKey = localPlantDateKey(date);
+    return { label, dateKey, isToday: dateKey === plantTodayKey, watered: plantWateredSet.has(dateKey) };
+  });
+  const plantStreak = getPlantStreak(plantWaterHistory, plantTodayKey);
+  useEffect(() => {
+    const syncPlantData = (event) => {
+      if (event?.key && !['bioedu_plant_water_history', 'bioedu_plant_watered', 'bioedu_plant_age'].includes(event.key)) return;
+      setPlantWaterHistory(readPlantWaterHistory());
+      setPlantAge(Math.max(7, Number(localStorage.getItem('bioedu_plant_age')) || 7));
+    };
+    window.addEventListener('storage', syncPlantData);
+    return () => window.removeEventListener('storage', syncPlantData);
+  }, []);
   useEffect(() => {
     const refreshCourse = (event) => {
       if (event?.key && event.key !== 'bioedu_course_structure') return;
@@ -1961,12 +2022,19 @@ function App() {
     fetch(`${BIO_SHARED_API}/api/visit`, { method: 'POST' }).catch(() => {});
   }, []);
   const waterPlantToday = () => {
-    if (plantWatered) return;
-    const nextAge = plantAge + 1;
+    const currentHistory = readPlantWaterHistory();
+    if (currentHistory.includes(plantTodayKey)) {
+      setPlantWaterHistory(currentHistory);
+      return;
+    }
+    const nextHistory = [...new Set([...currentHistory, plantTodayKey])].sort();
+    const currentAge = Math.max(7, Number(localStorage.getItem('bioedu_plant_age')) || plantAge);
+    const nextAge = currentAge + 1;
+    localStorage.setItem('bioedu_plant_water_history', JSON.stringify(nextHistory));
     localStorage.setItem('bioedu_plant_watered', plantTodayKey);
     localStorage.setItem('bioedu_plant_age', String(nextAge));
+    setPlantWaterHistory(nextHistory);
     setPlantAge(nextAge);
-    setPlantWatered(true);
   };
 
   const renderDifficultyBar = (level) => {
@@ -2018,13 +2086,13 @@ function App() {
               <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full border-[22px] border-white/15"></div><div className="absolute -left-10 -bottom-12 h-32 w-32 rounded-full bg-yellow-300/20"></div><div className="absolute right-20 bottom-8 text-[7rem] leading-none text-white/[0.08]">♧</div>
               <div className="relative flex h-full flex-col justify-between gap-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div><p className="mt-1 text-2xl md:text-3xl font-extrabold tracking-tight">Cây {plantAge} ngày tuổi</p></div>
+                  <div className="min-w-0"><p className="mt-1 text-2xl md:text-3xl font-extrabold tracking-tight">Cây {plantAge} ngày tuổi</p><p className="mt-1 text-xs font-bold text-emerald-50">🔥 Chuỗi {plantStreak} ngày liên tiếp</p></div>
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/30 bg-white/20 text-2xl shadow-sm transition-transform ${plantWatered ? 'scale-110' : ''}`}>{plantWatered ? '🌿' : '🌱'}</span>
                 </div>
 
                 <div className="relative pt-1">
                   <div className="absolute left-4 right-4 top-5 h-1 rounded-full bg-white/25"></div>
-                  <div className="relative grid grid-cols-7 gap-1">{['T2','T3','T4','T5','T6','T7','CN'].map((day,index) => <div key={day} className="flex flex-col items-center"><span className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm shadow-sm ${index === 6 ? 'border-lime-100 bg-white text-green-600' : 'border-white/35 bg-emerald-600/35 text-white'}`}>{index === 6 ? (plantWatered ? '🌿' : '💧') : '✓'}</span><span className="mt-1 text-[10px] font-extrabold text-emerald-50">{day}</span></div>)}</div>
+                  <div className="relative grid grid-cols-7 gap-1">{plantWeekDays.map(day => <div key={day.dateKey} className="flex flex-col items-center"><span className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm shadow-sm ${day.isToday ? 'border-lime-100 bg-white text-green-600' : day.watered ? 'border-white/35 bg-emerald-600/35 text-white' : 'border-white/15 bg-white/10 text-white/45'}`}>{day.isToday ? (plantWatered ? '🌿' : '💧') : day.watered ? '✓' : '·'}</span><span className="mt-1 text-[10px] font-extrabold text-emerald-50">{day.label}</span></div>)}</div>
                 </div>
 
                 <div className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 p-2.5">
@@ -2275,5 +2343,5 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script><script src="./history.js?v=20261015-NAV-V2"></script>
+</script><script src="./history.js?v=20261015-PLANT-V3"></script>
 </body></html>
