@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BioBilingual - Sinh học song ngữ</title>
-<meta name="biobilingual-build" content="20261015-MEDIA-V4" />
+<meta name="biobilingual-build" content="20261015-LOADING-VOCAB-V5" />
 
 <script defer src="https://cdn.tailwindcss.com"></script>
 <script defer crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
@@ -45,14 +45,16 @@ div.max-w-6xl.mx-auto.pb-10.animate-fade-in > section.p-6.md\:p-8 > div.text-cen
 section > div.grid.grid-cols-1.lg\:grid-cols-\[\.9fr_1\.1fr\] > div > div:last-child { flex: 1; }
 }
 body, #root > div, #root main { background: linear-gradient(160deg, #fffdf0 0%, #fff6c8 34%, #eaf2a4 68%, #cce68a 100%) !important; }
+body:not(.bio-app-ready) { min-height: 100vh; min-height: 100dvh; background: #fff !important; }
+body:not(.bio-app-ready) #root { background: #fff !important; }
 .lesson-scroller { scrollbar-width: thin; scrollbar-color: #6f95d8 #e7f0df; }
 .lesson-scroller::-webkit-scrollbar { height: 8px; }
 .lesson-scroller::-webkit-scrollbar-track { background: #e7f0df; border-radius: 999px; }
 .lesson-scroller::-webkit-scrollbar-thumb { background: #6f95d8; border-radius: 999px; border: 2px solid #e7f0df; }
 </style>
 </head>
-<body><div id="bio-loading-banner" style="padding:28px;position:relative;z-index:1;font:600 17px Arial;color:#153c35;background:#edf6ff">Đang tải BioBilingual…</div><div id="root"></div>
-<script>(function(){var banner=document.getElementById('bio-loading-banner'),root=document.getElementById('root');new MutationObserver(function(){if(root.children.length){banner.remove();}}).observe(root,{childList:true});})();</script>
+<body><div id="bio-loading-banner" style="padding:28px;position:relative;z-index:1;font:600 17px Arial;color:#153c35;background:#fff">Đang tải BioBilingual…</div><div id="root"></div>
+<script>(function(){var banner=document.getElementById('bio-loading-banner'),root=document.getElementById('root');var observer=new MutationObserver(function(){if(root.firstElementChild){document.body.classList.add('bio-app-ready');banner.remove();observer.disconnect();}});observer.observe(root,{childList:true});})();</script>
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo}=React;
 const BIO_SHARED_API = 'https://rglsppkyxubpmbebdobe.supabase.co/functions/v1/biobilingual-api';
@@ -142,7 +144,20 @@ const vocabPresentation = {
   'Khuếch tán thụ động': { en:'passive diffusion', pos:'noun phrase', pronunciation:'/ˈpæsɪv dɪˈfjuːʒən/', meaning:'The movement of particles from high to low concentration without energy.' },
   'Vận chuyển chủ động': { en:'active transport', pos:'noun phrase', pronunciation:'/ˈæktɪv ˈtrænspɔːrt/', meaning:'The movement of substances across a membrane using cellular energy.' }
 };
-const vocabInfo = word => { const base = vocabPresentation[word.term] || { en: word.term, pos:'noun', pronunciation:`/${word.term}/`, meaning:word.def || `A biology term used to describe ${word.term.toLowerCase()}.` }; return { ...base, en:word.term||base.en, pos:word.pos||base.pos, pronunciation:word.pronunciation||base.pronunciation, meaning:word.meaning||base.meaning, vi:word.def||word.meaning||'', image:word.image||'' }; };
+const vocabPartOfSpeechLabel = value => {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Chưa có từ loại';
+  const key = raw.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  const labels = {
+    n: 'Danh từ', noun: 'Danh từ', np: 'Cụm danh từ', 'noun phrase': 'Cụm danh từ',
+    v: 'Động từ', verb: 'Động từ', vp: 'Cụm động từ', 'verb phrase': 'Cụm động từ',
+    adj: 'Tính từ', adjective: 'Tính từ', adv: 'Trạng từ', adverb: 'Trạng từ',
+    'plural noun': 'Danh từ số nhiều', prep: 'Giới từ', preposition: 'Giới từ',
+    pron: 'Đại từ', pronoun: 'Đại từ', conjunction: 'Liên từ'
+  };
+  return labels[key] || raw;
+};
+const vocabInfo = word => { const base = vocabPresentation[word.term] || { en: word.term, pos:'', pronunciation:`/${word.term}/`, meaning:word.def || `A biology term used to describe ${word.term.toLowerCase()}.` }; return { ...base, en:word.term||base.en, pos:vocabPartOfSpeechLabel(word.pos||word.partOfSpeech||base.pos), pronunciation:word.pronunciation||base.pronunciation, meaning:word.meaning||base.meaning, vi:word.def||word.meaning||'', image:word.image||'' }; };
 const vocabImage = 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=900&q=80';
 
 // Chương và bài chỉ lấy từ trang Admin.
@@ -658,7 +673,7 @@ const VocabSystem = ({ selectedPath, onPathChange, initialGrade = '10' }) => {
                     <button onClick={() => speakWord(vocabInfo(w).en, w.id)} className="mt-0.5 text-blue-500 hover:text-blue-700 text-lg shrink-0" title="Nghe đọc / Listen">🔊</button>
                     <div className="min-w-0">
                       <div className="font-extrabold text-gray-900 text-lg md:text-xl break-words">{w.term}</div>
-                      <div className="text-sm text-slate-400 mt-1">Thuật ngữ Sinh học</div>
+                      <div className="text-sm text-slate-400 mt-1">{vocabPartOfSpeechLabel(w.pos)}</div>
                     </div>
                   </div>
 
@@ -669,7 +684,7 @@ const VocabSystem = ({ selectedPath, onPathChange, initialGrade = '10' }) => {
 
                   <div>
                     <div className="md:hidden text-xs font-bold text-slate-400 mb-1">LOẠI TỪ</div>
-                    <span className="inline-flex px-3 py-2 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold tracking-wide">THUẬT NGỮ</span>
+                    <span className="inline-flex px-3 py-2 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold tracking-wide">{vocabPartOfSpeechLabel(w.pos)}</span>
                   </div>
 
                   <div className="flex md:justify-center items-center">
@@ -2365,5 +2380,5 @@ function App() {
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script><script src="./history.js?v=20261015-MEDIA-V4"></script>
+</script><script src="./history.js?v=20261015-LOADING-VOCAB-V5"></script>
 </body></html>

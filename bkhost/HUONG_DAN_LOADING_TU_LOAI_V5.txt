@@ -1,0 +1,12 @@
+BIOBILINGUAL – BẢN LOADING & TỪ LOẠI V5
+
+Bản này thay nền tải thành màu trắng với dòng “Đang tải BioBilingual…”, sau đó trang đăng nhập/trang học sẽ xuất hiện khi mã sẵn sàng. Danh sách từ vựng đọc loại từ thật đã lưu (Danh từ, Cụm danh từ, Động từ…), thay vì ghi cứng “Thuật ngữ”. Trang quản trị đọc cột Từ loại trong Excel và báo rõ dòng thiếu dữ liệu. Các sửa chữa cây tưới, điều hướng và phát video của bản trước được giữ lại.
+
+CẬP NHẬT BKHOST
+1. Sao lưu các tệp cũ. Giải nén gói trên máy tính.
+2. Tải index.html, history.js và BIO_VERSION.txt vào public_html và ghi đè.
+3. Tải admin/index.html vào public_html/admin/ và ghi đè.
+4. Mở https://biobilingual.top/BIO_VERSION.txt để kiểm tra đúng 20261015-LOADING-VOCAB-V5, rồi làm mới trình duyệt.
+
+FILE TỪ VỰNG
+File templates/mau-tu-vung-biobilingual.xlsx có trang “Từ vựng” để nhập và trang “Ví dụ” để tham khảo. Giữ 5 cột Từ vựng, Phiên âm, Nghĩa tiếng Việt, Từ loại, Hình ảnh; nhập các dòng trên trang đầu tiên. Hình ảnh có thể để trống. File hiện đã đăng trên website có Từ loại trong dữ liệu nên không cần tải lại chỉ để sửa nhãn hiển thị.
