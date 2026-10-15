@@ -442,15 +442,54 @@ ReactDOM.createRoot(document.getElementById('site-content-admin')).render(<SiteC
 </script>
 <div id="entertainment-admin"></div>
 <script type="text/babel">
+const getEntertainmentMime = (item = {}) => {
+  const source = String(item?.source || '');
+  const dataMime = (source.match(/^data:([^;,]+)/i) || [])[1]?.toLowerCase() || '';
+  if (dataMime.startsWith('video/')) return dataMime;
+  const declaredMime = String(item?.mime || '').toLowerCase();
+  if (item?.type === 'video') return declaredMime.startsWith('video/') ? declaredMime : 'video/mp4';
+  const cleanSource = source.split(/[?#]/)[0].toLowerCase();
+  const extension = (cleanSource.match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+  const videoTypes = { mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime', m4v: 'video/x-m4v' };
+  if (videoTypes[extension]) return videoTypes[extension];
+  if (dataMime) return dataMime;
+  return declaredMime || 'audio/mpeg';
+};
+const isEntertainmentVideo = (item) => getEntertainmentMime(item).startsWith('video/');
+
 function EntertainmentAdmin(){
   const {useState}=React;
   const read=()=>{try{return JSON.parse(localStorage.getItem('bioedu_entertainment')||'[]')||[]}catch{return []}};
-  const [songs,setSongs]=useState(read),[title,setTitle]=useState(''),[artist,setArtist]=useState(''),[source,setSource]=useState(''),[notice,setNotice]=useState('');
-  const persist=next=>{try{localStorage.setItem('bioedu_entertainment',JSON.stringify(next));setSongs(next);setNotice('Đã đồng bộ lên web học sinh.');setTimeout(()=>setNotice(''),2200)}catch{setNotice('Tệp quá lớn. Hãy dùng đường dẫn MP3 hoặc tệp ngắn hơn.')}};
-  const upload=e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>1500000){setNotice('Tệp nên nhỏ hơn 1,5 MB để đồng bộ ổn định.');return}const r=new FileReader();r.onload=()=>setSource(r.result);r.readAsDataURL(file)};
-  const save=()=>{if(!source.trim())return setNotice('Hãy dán đường dẫn hoặc chọn một tệp âm thanh.');const next=[...songs,{id:Date.now(),title:title.trim()||'Bài nhạc mới',artist:artist.trim()||'Giáo viên BioBilingual',source,mime:'audio/mpeg',createdAt:new Date().toISOString()}];persist(next);setTitle('');setArtist('');setSource('')};
+  const [songs,setSongs]=useState(read),[title,setTitle]=useState(''),[artist,setArtist]=useState(''),[source,setSource]=useState(''),[mime,setMime]=useState(''),[mediaType,setMediaType]=useState(''),[notice,setNotice]=useState(''),[uploading,setUploading]=useState(false);
+  const persist=next=>{try{localStorage.setItem('bioedu_entertainment',JSON.stringify(next));setSongs(next);setNotice('Đã đồng bộ lên web học sinh.');setTimeout(()=>setNotice(''),2200)}catch{setNotice('Không lưu được mục giải trí. Hãy kiểm tra dung lượng trình duyệt hoặc dùng đường dẫn tệp trực tiếp.')}};
+  const upload=async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const extension=(file.name.split('.').pop()||'').toLowerCase();
+    const extensionTypes={mp4:'video/mp4',m4v:'video/x-m4v',mov:'video/quicktime',webm:'video/webm',ogv:'video/ogg',mp3:'audio/mpeg',m4a:'audio/mp4',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg'};
+    const typed=file.type||'';
+    const fileMime=typed.startsWith('video/')||typed.startsWith('audio/')?typed:extensionTypes[extension]||'';
+    if(!fileMime){setNotice('Chỉ hỗ trợ tệp âm thanh hoặc video (MP3, MP4, WebM…).');e.target.value='';return}
+    if(file.size>50*1024*1024){setNotice('Tệp tối đa 50 MB. Hãy nén video rồi tải lại.');e.target.value='';return}
+    const kind=fileMime.startsWith('video/')?'video':'audio';
+    try{
+      setUploading(true);setNotice('Đang tải tệp lên…');
+      const uploadedSource=await adminFileToData(file,kind==='video'?'learning-videos':'music');
+      setSource(uploadedSource);setMime(fileMime);setMediaType(kind);
+      setNotice('Tải tệp xong. Nhấn “Lưu nội dung” để đăng lên trang học sinh.');
+    }catch(error){setNotice('Không tải được tệp: '+(error?.message||'Vui lòng thử lại.'))}
+    finally{setUploading(false);e.target.value=''}
+  };
+  const save=()=>{
+    if(uploading)return setNotice('Vui lòng chờ tải tệp xong.');
+    if(!source.trim())return setNotice('Hãy dán đường dẫn trực tiếp hoặc chọn một tệp âm thanh/video.');
+    const item={source,mime,type:mediaType};
+    const resolvedMime=getEntertainmentMime(item);
+    const kind=resolvedMime.startsWith('video/')?'video':'audio';
+    const next=[{id:Date.now(),title:title.trim()||(kind==='video'?'Video sinh học mới':'Bài nhạc mới'),artist:artist.trim()||'Giáo viên BioBilingual',source,mime:resolvedMime,type:kind,createdAt:new Date().toISOString()},...songs];
+    persist(next);setTitle('');setArtist('');setSource('');setMime('');setMediaType('');
+  };
   const remove=id=>persist(songs.filter(x=>x.id!==id));
-  return <section className="max-w-7xl mx-auto px-5 md:px-8 pb-10"><div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><div className="p-6 md:p-7 border-b border-slate-100"><p className="text-xs uppercase tracking-wider font-extrabold text-fuchsia-600">Giải trí / Entertainment</p><h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-1">Đăng bài nhạc cho học sinh</h2><p className="text-sm text-slate-500 mt-2">Thêm liên kết MP3 hoặc tải lên một tệp âm thanh ngắn. Bài nhạc sẽ xuất hiện trong mục Giải trí trên web học sinh.</p></div><div className="p-6 md:p-7 grid grid-cols-1 xl:grid-cols-[1fr_.9fr] gap-6"><div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/50 p-5 space-y-4"><label className="block"><span className="block text-sm font-bold text-slate-700 mb-2">Tên bài nhạc</span><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Ví dụ: Giai điệu của tế bào" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"/></label><label className="block"><span className="block text-sm font-bold text-slate-700 mb-2">Nghệ sĩ / người đăng</span><input value={artist} onChange={e=>setArtist(e.target.value)} placeholder="Tên giáo viên" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"/></label><label className="block"><span className="block text-sm font-bold text-slate-700 mb-2">Đường dẫn âm thanh</span><input value={source.startsWith('data:')?'':source} onChange={e=>setSource(e.target.value)} placeholder="https://.../bai-nhac.mp3" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"/></label><div className="flex flex-wrap items-center gap-3"><label className="inline-flex items-center px-4 py-3 rounded-xl border border-dashed border-fuchsia-300 bg-white text-fuchsia-700 font-bold cursor-pointer">Tải tệp âm thanh<input type="file" accept="audio/*" onChange={upload} className="hidden"/></label><button onClick={save} className="px-5 py-3 rounded-xl bg-fuchsia-600 text-white font-extrabold hover:bg-fuchsia-700">Lưu bài nhạc</button></div>{source&&<audio controls src={source} className="w-full"/>}{notice&&<p className="text-sm font-bold text-emerald-700">✓ {notice}</p>}</div><div><div className="flex items-center justify-between mb-3"><h3 className="font-extrabold text-lg text-slate-900">Danh sách bài nhạc</h3><span className="text-xs font-bold text-slate-500">{songs.length} bài</span></div><div className="space-y-3">{songs.length?songs.map(song=><article key={song.id} className="rounded-2xl border border-slate-200 p-4 bg-white"><div className="flex items-start justify-between gap-3"><div><h4 className="font-extrabold text-slate-800">{song.title}</h4><p className="text-sm text-slate-500 mt-1">{song.artist}</p></div><button onClick={()=>remove(song.id)} className="text-sm font-bold text-rose-600">Xóa</button></div><audio controls preload="metadata" src={song.source} className="w-full mt-3"/></article>):<div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">Chưa có bài nhạc. Hãy thêm bài đầu tiên ở khung bên trái.</div>}</div></div></div></div></section>;
+  return <section className="max-w-7xl mx-auto px-5 md:px-8 pb-10"><div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><div className="p-6 md:p-7 border-b border-slate-100"><p className="text-xs uppercase tracking-wider font-extrabold text-fuchsia-600">Giải trí / Entertainment</p><h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-1">Đăng nhạc hoặc video cho học sinh</h2><p className="text-sm text-slate-500 mt-2">Tải tệp âm thanh/video hoặc dán đường dẫn trực tiếp đến tệp .mp3, .mp4, .webm. Video sẽ được phát bằng khung hình, không bị đổi thành thanh âm thanh.</p></div><div className="p-6 md:p-7 grid grid-cols-1 xl:grid-cols-[1fr_.9fr] gap-6"><div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/50 p-5 space-y-4"><label className="block"><span className="block text-sm font-bold text-slate-700 mb-2">Tiêu đề</span><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Tên bài nhạc hoặc video" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"/></label><label className="block"><span className="block text-sm font-bold text-slate-700 mb-2">Nghệ sĩ / người đăng</span><input value={artist} onChange={e=>setArtist(e.target.value)} placeholder="Tên giáo viên" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"/></label><label className="block"><span className="block text-sm font-bold text-slate-700 mb-2">Đường dẫn trực tiếp âm thanh/video</span><input value={source.startsWith('data:')?'':source} onChange={e=>{setSource(e.target.value);setMime('');setMediaType('')}} placeholder="https://.../bai-nhac.mp3 hoặc /video.mp4" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"/></label><div className="flex flex-wrap items-center gap-3"><label className="inline-flex items-center px-4 py-3 rounded-xl border border-dashed border-fuchsia-300 bg-white text-fuchsia-700 font-bold cursor-pointer">Tải tệp âm thanh / video<input type="file" accept="audio/*,video/*" onChange={upload} className="hidden"/></label><button onClick={save} disabled={uploading} className="px-5 py-3 rounded-xl bg-fuchsia-600 text-white font-extrabold hover:bg-fuchsia-700 disabled:opacity-50">{uploading?'Đang tải…':'Lưu nội dung'}</button></div>{notice&&<p className="text-sm font-bold text-emerald-700">{uploading?'↻ ':'✓ '}{notice}</p>}{source&&<div className="pt-2">{isEntertainmentVideo({source,mime,type:mediaType})?<video controls playsInline preload="metadata" src={source} className="w-full max-h-80 rounded-xl bg-black"/>:<audio controls preload="metadata" src={source} className="w-full"/>}</div>}</div><div><div className="flex items-center justify-between mb-3"><h3 className="font-extrabold text-lg text-slate-900">Nội dung đã đăng</h3><span className="text-xs font-bold text-slate-500">{songs.length} mục</span></div><div className="space-y-3">{songs.length?songs.map(song=>{const isVideo=isEntertainmentVideo(song);return <article key={song.id} className="rounded-2xl border border-slate-200 p-4 bg-white"><div className="flex items-start justify-between gap-3"><div><h4 className="font-extrabold text-slate-800">{song.title}</h4><p className="text-sm text-slate-500 mt-1">{song.artist}</p></div><button onClick={()=>remove(song.id)} className="text-sm font-bold text-rose-600">Xóa</button></div>{isVideo?<video controls playsInline preload="metadata" src={song.source} className="w-full max-h-80 rounded-xl bg-black mt-3"/>:<audio controls preload="metadata" src={song.source} className="w-full mt-3"/>}</article>}):<div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">Chưa có nội dung giải trí. Hãy thêm bài nhạc hoặc video đầu tiên.</div>}</div></div></div></div></section>;
 }
 ReactDOM.createRoot(document.getElementById('entertainment-admin')).render(<EntertainmentAdmin/>);
 </script>
