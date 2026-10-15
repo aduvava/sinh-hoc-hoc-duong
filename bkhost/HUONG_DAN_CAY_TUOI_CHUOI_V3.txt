@@ -1,0 +1,13 @@
+BioBilingual — sửa lịch tưới và chuỗi ngày, bản 20261015-PLANT-V3
+
+Cài trên BKHost:
+1. Tải gói ZIP này và giải nén.
+2. Tải đè index.html, history.js và BIO_VERSION.txt vào public_html.
+3. Mở https://biobilingual.top/BIO_VERSION.txt để xác nhận 20261015-PLANT-V3.
+4. Xóa cache trang trên điện thoại bằng Ctrl+Shift+R trên máy tính hoặc xóa dữ liệu trang trong Chrome trên điện thoại.
+
+Cách hoạt động:
+- Lịch đánh dấu đúng thứ Hai đến Chủ nhật của tuần hiện tại; ngày hôm nay được làm nổi bật.
+- Mỗi lần tưới được lưu theo ngày trong trình duyệt, một lần mỗi ngày.
+- Chuỗi tăng khi tưới liên tiếp các ngày; bỏ một ngày thì chuỗi bắt đầu lại khi tưới trở lại.
+- Dữ liệu lưu trên trình duyệt/thiết bị này và không tự đồng bộ sang thiết bị khác.
