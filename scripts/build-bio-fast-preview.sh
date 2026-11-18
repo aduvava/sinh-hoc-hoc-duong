@@ -78,36 +78,37 @@ for key in ['bioedu_vocab_bank', 'bioedu_materials_library', 'bioedu_exam_bank',
 # React owns the DOM inside #root. The legacy history script used a MutationObserver
 # that changed React text nodes and removed its chatbot button, causing insertBefore crashes.
 # Wire the same history overlay using a custom event instead of DOM mutations.
-help_button = '<button className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Trợ giúp / Help</button>'
-history_button = '<button onClick={() => window.dispatchEvent(new Event("bioedu-open-history"))} className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Lịch sử làm bài / Attempt History</button>'
-if help_button not in app:
-    raise RuntimeError('Cannot find Help button: refusing to generate partial fix.')
-app = app.replace(help_button, history_button, 1)
+# New student source already connects React-owned buttons to the history overlay.
+# Support both older source and the English-only source.
+history_action = 'bioedu-open-history'
+if history_action not in app:
+    help_button = '<button className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Trợ giúp / Help</button>'
+    history_button = '<button onClick={() => window.dispatchEvent(new Event("bioedu-open-history"))} className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Attempt History</button>'
+    if help_button not in app:
+        raise RuntimeError('History button source not found')
+    app = app.replace(help_button, history_button, 1)
 
-help_icon = '<span className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">?</span>'
-history_icon = '<button type="button" title="Lịch sử làm bài" aria-label="Lịch sử làm bài" onClick={() => window.dispatchEvent(new Event("bioedu-open-history"))} className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">↺</button>'
-if help_icon not in app:
-    raise RuntimeError('Cannot find Help icon: refusing to generate partial fix.')
-app = app.replace(help_icon, history_icon, 1)
+    help_icon = '<span className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">?</span>'
+    history_icon = '<button type="button" title="Attempt History" aria-label="Attempt History" onClick={() => window.dispatchEvent(new Event("bioedu-open-history"))} className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">↺</button>'
+    if help_icon not in app:
+        raise RuntimeError('History icon source not found')
+    app = app.replace(help_icon, history_icon, 1)
 
-# The old history.js removed the chatbot DOM node; hide the inactive placeholder
-# in React's own render rather than deleting it from under React.
 chatbot_class = 'className="fixed bottom-7 right-7 bg-blue-600'
-if chatbot_class not in app:
-    raise RuntimeError('Cannot find chatbot placeholder.')
-app = app.replace(chatbot_class, 'style={{display:"none"}} ' + chatbot_class, 1)
+if chatbot_class in app and 'style={{display:"none"}} ' + chatbot_class not in app:
+    app = app.replace(chatbot_class, 'style={{display:"none"}} ' + chatbot_class, 1)
 
 history_file = site / 'bkhost/history.js'
 if not history_file.is_file():
     raise RuntimeError('Missing history.js')
 history = history_file.read_text(encoding='utf-8')
 history_start = '  const observer = new MutationObserver(patchHeader);'
-if history.count(history_start) != 1:
-    raise RuntimeError('Unexpected history.js mutation code. Nothing changed.')
-history = history[:history.index(history_start)] + """  // Open history from a React-owned button; never mutate React-managed DOM.
-  window.addEventListener('bioedu-open-history', loadHistory);
+if history_start in history:
+    history = history[:history.index(history_start)] + """  window.addEventListener('bioedu-open-history', loadHistory);
 })();
 """
+elif "window.addEventListener('bioedu-open-history', loadHistory)" not in history:
+    raise RuntimeError('Unexpected history.js, no React-owned history event.')
 (tmp / 'bio-history-preview.js').write_text(history, encoding='utf-8')
 
 # Repair partial quick-access records from an older browser's localStorage.
@@ -136,8 +137,9 @@ if source_css not in preview or source_babel not in preview:
     raise RuntimeError('Unexpected CDN script layout. No files have been changed.')
 preview = preview.replace(source_css, f'<link rel="stylesheet" href="/bkhost/assets/bio-preview.css?v={version}">', 1)
 preview = preview.replace(source_babel, '', 1)
-preview = preview.replace('<script src="./history.js?v=20261015"></script>',
-                          f'<script defer src="/bkhost/assets/bio-history-preview.js?v={version}"></script>')
+preview = re.sub(r'<script src="\\./history\\.js\\?v=[^"]+"></script>',
+                 f'<script defer src="/bkhost/assets/bio-history-preview.js?v={version}"></script>',
+                 preview, count=1)
 
 (tmp / 'bio-preview.jsx').write_text(app, encoding='utf-8')
 (tmp / 'bio-fast-preview.html').write_text(preview, encoding='utf-8')
