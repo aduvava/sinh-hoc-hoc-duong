@@ -75,6 +75,41 @@ for key in ['bioedu_vocab_bank', 'bioedu_materials_library', 'bioedu_exam_bank',
     old = "JSON.parse(localStorage.getItem('" + key + "') || '[]')"
     app = app.replace(old, "safeBioArray('" + key + "')")
 
+# React owns the DOM inside #root. The legacy history script used a MutationObserver
+# that changed React text nodes and removed its chatbot button, causing insertBefore crashes.
+# Wire the same history overlay using a custom event instead of DOM mutations.
+help_button = '<button className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Trợ giúp / Help</button>'
+history_button = '<button onClick={() => window.dispatchEvent(new Event("bioedu-open-history"))} className="hidden sm:block text-sm font-semibold text-slate-500 hover:text-slate-900">Lịch sử làm bài / Attempt History</button>'
+if help_button not in app:
+    raise RuntimeError('Cannot find Help button: refusing to generate partial fix.')
+app = app.replace(help_button, history_button, 1)
+
+help_icon = '<span className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">?</span>'
+history_icon = '<button type="button" title="Lịch sử làm bài" aria-label="Lịch sử làm bài" onClick={() => window.dispatchEvent(new Event("bioedu-open-history"))} className="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-500 flex items-center justify-center text-sm">↺</button>'
+if help_icon not in app:
+    raise RuntimeError('Cannot find Help icon: refusing to generate partial fix.')
+app = app.replace(help_icon, history_icon, 1)
+
+# The old history.js removed the chatbot DOM node; hide the inactive placeholder
+# in React's own render rather than deleting it from under React.
+chatbot_class = 'className="fixed bottom-7 right-7 bg-blue-600'
+if chatbot_class not in app:
+    raise RuntimeError('Cannot find chatbot placeholder.')
+app = app.replace(chatbot_class, 'style={{display:"none"}} ' + chatbot_class, 1)
+
+history_file = site / 'bkhost/history.js'
+if not history_file.is_file():
+    raise RuntimeError('Missing history.js')
+history = history_file.read_text(encoding='utf-8')
+history_start = '  const observer = new MutationObserver(patchHeader);'
+if history.count(history_start) != 1:
+    raise RuntimeError('Unexpected history.js mutation code. Nothing changed.')
+history = history[:history.index(history_start)] + """  // Open history from a React-owned button; never mutate React-managed DOM.
+  window.addEventListener('bioedu-open-history', loadHistory);
+})();
+"""
+(tmp / 'bio-history-preview.js').write_text(history, encoding='utf-8')
+
 # Repair partial quick-access records from an older browser's localStorage.
 # Keep valid saved labels but restore required properties if a record is incomplete.
 old_quick_access = "return { ...siteContentDefaults, ...saved, home: { ...siteContentDefaults.home, ...(saved?.home || {}) }, plant: { ...siteContentDefaults.plant, ...(saved?.plant || {}) }, quickAccess: Array.isArray(saved?.quickAccess) && saved.quickAccess.length === 4 ? saved.quickAccess : siteContentDefaults.quickAccess };"
@@ -101,7 +136,7 @@ if source_css not in preview or source_babel not in preview:
 preview = preview.replace(source_css, '<link rel="stylesheet" href="/bkhost/assets/bio-preview.css">', 1)
 preview = preview.replace(source_babel, '', 1)
 preview = preview.replace('<script src="./history.js?v=20261015"></script>',
-                          '<script defer src="./history.js?v=20261015"></script>')
+                          '<script defer src="/bkhost/assets/bio-history-preview.js"></script>')
 
 (tmp / 'bio-preview.jsx').write_text(app, encoding='utf-8')
 (tmp / 'bio-fast-preview.html').write_text(preview, encoding='utf-8')
@@ -113,7 +148,7 @@ npx --yes esbuild@0.25.12 "$workdir/bio-preview.jsx" --outfile="$workdir/bio-pre
 npx --yes tailwindcss@3.4.17 -i "$workdir/input.css" -o "$workdir/bio-preview.css" --content "$SITE/bkhost/index.html" --minify
 node --check "$workdir/bio-preview.js"
 
-for asset in bio-preview.js bio-preview.css bio-fast-preview.html; do
+for asset in bio-preview.js bio-preview.css bio-fast-preview.html bio-history-preview.js; do
   if [[ ! -s "$workdir/$asset" ]]; then
     echo "ERROR: missing build output $asset. Nothing changed." >&2
     exit 2
@@ -123,9 +158,10 @@ done
 mkdir -p "$SITE/bkhost/assets"
 install -m 644 "$workdir/bio-preview.js" "$SITE/bkhost/assets/bio-preview.js"
 install -m 644 "$workdir/bio-preview.css" "$SITE/bkhost/assets/bio-preview.css"
+install -m 644 "$workdir/bio-history-preview.js" "$SITE/bkhost/assets/bio-history-preview.js"
 install -m 644 "$workdir/bio-fast-preview.html" "$SITE/bkhost/fast-preview.html"
 
 echo '===== BUILD COMPLETED: PREVIEW ONLY ====='
-ls -lh "$SITE/bkhost/fast-preview.html" "$SITE/bkhost/assets/bio-preview.js" "$SITE/bkhost/assets/bio-preview.css"
+ls -lh "$SITE/bkhost/fast-preview.html" "$SITE/bkhost/assets/bio-preview.js" "$SITE/bkhost/assets/bio-preview.css" "$SITE/bkhost/assets/bio-history-preview.js"
 echo 'Open https://bio.educhi.xyz/bkhost/fast-preview.html'
 echo 'The live / and /bkhost/ pages were NOT changed.'
