@@ -1,16 +1,8 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 
-const studentOrigin = "https://biobilingual.com";
-const wwwStudentOrigin = "https://www.biobilingual.com";
-const topStudentOrigin = "https://biobilingual.top";
-const wwwTopStudentOrigin = "https://www.biobilingual.top";
-const legacyStudentOrigin = "https://biola-sinh-hoc-thpt.helenlopezj669.chatgpt.site";
-const adminOrigin = "https://biobilingual-admin-portal.helenlopezj669.chatgpt.site";
-const githubOrigin = "https://trankienquoc90-debug.github.io";
-const newGithubOrigin = "https://biobilingual.github.io";
-const currentGithubOrigin = "https://aduvava.github.io";
-const allowedOrigins = new Set([studentOrigin, wwwStudentOrigin, topStudentOrigin, wwwTopStudentOrigin, legacyStudentOrigin, adminOrigin, githubOrigin, newGithubOrigin, currentGithubOrigin, "http://localhost:3000", "http://127.0.0.1:5500"]);
-const googleClientId = "519568222612-mvds8a054h1hn49ej5guk1hk9piv0arb.apps.googleusercontent.com";
+const studentOrigin = "https://bio.educhi.xyz";
+const allowedOrigins = new Set([studentOrigin]);
+const googleClientId = "166084982797-71i4e44vudr32896rde1sls1ucj3j9ts.apps.googleusercontent.com";
 const sessionLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 const adminSessionLifetimeMs = 12 * 60 * 60 * 1000;
 
@@ -55,10 +47,11 @@ function clean(value: unknown, max = 300) {
   return String(value ?? "").trim().slice(0, max);
 }
 function isAdminOrigin(req: Request) {
-  const origin = req.headers.get("Origin");
-  return origin === studentOrigin || origin === wwwStudentOrigin || origin === topStudentOrigin || origin === wwwTopStudentOrigin || origin === adminOrigin || origin === githubOrigin || origin === newGithubOrigin || origin === currentGithubOrigin;
+  return req.headers.get("Origin") === studentOrigin;
 }
-function isStudentOrigin(req: Request) { const o=req.headers.get("Origin"); return o === studentOrigin || o === wwwStudentOrigin || o === topStudentOrigin || o === wwwTopStudentOrigin || o === legacyStudentOrigin || o === githubOrigin || o === newGithubOrigin; }
+function isStudentOrigin(req: Request) {
+  return req.headers.get("Origin") === studentOrigin;
+}
 function validGrade(value: unknown) {
   const n = Number(value);
   return [10,11,12].includes(n) ? n : 0;
