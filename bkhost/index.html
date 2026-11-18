@@ -2079,7 +2079,7 @@ function App() {
     <div className="flex h-screen bg-[#eef6ff] font-sans text-gray-900 overflow-hidden">
       
       {/* SIDEBAR */}
-      <div className={`hidden md:flex bg-white border-r border-slate-200 flex-col justify-between transition-all duration-300 z-20 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+      <div className={`hidden md:flex bg-white border-r border-slate-200 flex-col justify-between transition-all duration-300 z-20 ${isSidebarOpen ? 'w-72' : 'w-20'}`}>
         <div>
           <div className="h-20 flex items-center justify-center border-b border-slate-100 shrink-0 cursor-pointer" onClick={() => navigateToTab('home')}>
             <BioLogo />
@@ -2097,7 +2097,7 @@ function App() {
             ].map(item => (
               <button
                 key={item.id} onClick={() => navigateToTab(item.id)} title={!isSidebarOpen ? item.english : ""}
-                className={`flex items-center border shadow-sm ${isSidebarOpen ? 'justify-start text-left px-2.5' : 'justify-center'} py-1.5 rounded-xl transition-all group ${activeTab === item.id ? `${item.active} text-white font-bold shadow-md` : `${item.tone} hover:-translate-y-0.5 hover:shadow-md`}`}
+                className={`flex items-center border shadow-sm ${isSidebarOpen ? 'justify-start text-left px-3.5' : 'justify-center'} py-1.5 rounded-xl transition-all group ${activeTab === item.id ? `${item.active} text-white font-bold shadow-md` : `${item.tone} hover:-translate-y-0.5 hover:shadow-md`}`}
               >
                 {isSidebarOpen ? (
                   <span className="inline-flex items-center gap-3 text-[18px] leading-tight w-full">
