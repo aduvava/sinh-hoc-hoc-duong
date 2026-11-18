@@ -1,5 +1,5 @@
 (() => {
-  const API = 'https://rglsppkyxubpmbebdobe.supabase.co/functions/v1/biobilingual-api/api/my-results';
+  const API = 'https://yjdbrjoolgblmamdphle.supabase.co/functions/v1/biobilingual-api/api/my-results';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const authToken = () => {
     try {
