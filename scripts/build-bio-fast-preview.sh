@@ -23,7 +23,7 @@ export BIO_PREVIEW_TEMP_DIR="$workdir"
 
 python3 - <<'PY'
 from pathlib import Path
-import os, re
+import os, re, time
 
 site = Path('/var/www/biobilingual')
 tmp = Path(os.environ['BIO_PREVIEW_TEMP_DIR'])
@@ -128,15 +128,16 @@ new_quick_access = """const quickAccess = Array.isArray(saved?.quickAccess) && s
 if old_quick_access in app:
     app = app.replace(old_quick_access, new_quick_access, 1)
 
-preview = html[:match.start()] + '<script defer src="/bkhost/assets/bio-preview.js"></script>' + html[match.end():]
+version = str(int(time.time()))
+preview = html[:match.start()] + f'<script defer src="/bkhost/assets/bio-preview.js?v={version}"></script>' + html[match.end():]
 source_css = '<script defer src="https://cdn.tailwindcss.com"></script>'
 source_babel = '<script defer src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>'
 if source_css not in preview or source_babel not in preview:
     raise RuntimeError('Unexpected CDN script layout. No files have been changed.')
-preview = preview.replace(source_css, '<link rel="stylesheet" href="/bkhost/assets/bio-preview.css">', 1)
+preview = preview.replace(source_css, f'<link rel="stylesheet" href="/bkhost/assets/bio-preview.css?v={version}">', 1)
 preview = preview.replace(source_babel, '', 1)
 preview = preview.replace('<script src="./history.js?v=20261015"></script>',
-                          '<script defer src="/bkhost/assets/bio-history-preview.js"></script>')
+                          f'<script defer src="/bkhost/assets/bio-history-preview.js?v={version}"></script>')
 
 (tmp / 'bio-preview.jsx').write_text(app, encoding='utf-8')
 (tmp / 'bio-fast-preview.html').write_text(preview, encoding='utf-8')
