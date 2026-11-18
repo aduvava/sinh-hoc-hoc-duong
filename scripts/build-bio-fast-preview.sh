@@ -40,8 +40,8 @@ if boot not in app:
 app = app.replace(boot, '''
 class BioErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { failed: false }; }
-  static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(error) { console.error('Bio app rendering failed:', error); }
+  static getDerivedStateFromError(error) { return { failed: true, detail: String(error?.message || error).slice(0, 350) }; }
+  componentDidCatch(error, info) { console.error('Bio app rendering failed:', error, info); }
   render() {
     if (!this.state.failed) return this.props.children;
     return React.createElement('div', {
@@ -49,6 +49,7 @@ class BioErrorBoundary extends React.Component {
     },
       React.createElement('h2', null, 'Không thể hiển thị nội dung'),
       React.createElement('p', null, 'Có lỗi tải trang. Vui lòng thử lại hoặc liên hệ quản trị viên.'),
+      React.createElement('pre', {style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere',background:'#fff1f2',border:'1px solid #fecdd3',padding:'12px',fontSize:'13px'}}, this.state.detail || 'Không có chi tiết lỗi'),
       React.createElement('button', { onClick: () => location.reload() }, 'Tải lại trang')
     );
   }
@@ -73,6 +74,24 @@ for key in ['bioedu_vocab_bank', 'bioedu_materials_library', 'bioedu_exam_bank',
             'bioedu_entertainment', 'bioedu_results', 'bioedu_students']:
     old = "JSON.parse(localStorage.getItem('" + key + "') || '[]')"
     app = app.replace(old, "safeBioArray('" + key + "')")
+
+# Repair partial quick-access records from an older browser's localStorage.
+# Keep valid saved labels but restore required properties if a record is incomplete.
+old_quick_access = "return { ...siteContentDefaults, ...saved, home: { ...siteContentDefaults.home, ...(saved?.home || {}) }, plant: { ...siteContentDefaults.plant, ...(saved?.plant || {}) }, quickAccess: Array.isArray(saved?.quickAccess) && saved.quickAccess.length === 4 ? saved.quickAccess : siteContentDefaults.quickAccess };"
+new_quick_access = """const quickAccess = Array.isArray(saved?.quickAccess) && saved.quickAccess.length === 4
+      ? saved.quickAccess.map((raw, index) => {
+          const base = siteContentDefaults.quickAccess[index];
+          const item = raw && typeof raw === 'object' ? raw : {};
+          return Object.fromEntries(
+            Object.entries(base).map(([key, value]) =>
+              [key, typeof item[key] === 'string' && item[key].trim() ? item[key] : value]
+            )
+          );
+        })
+      : siteContentDefaults.quickAccess;
+    return { ...siteContentDefaults, ...saved, home: { ...siteContentDefaults.home, ...(saved?.home || {}) }, plant: { ...siteContentDefaults.plant, ...(saved?.plant || {}) }, quickAccess };"""
+if old_quick_access in app:
+    app = app.replace(old_quick_access, new_quick_access, 1)
 
 preview = html[:match.start()] + '<script defer src="/bkhost/assets/bio-preview.js"></script>' + html[match.end():]
 source_css = '<script defer src="https://cdn.tailwindcss.com"></script>'
