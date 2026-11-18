@@ -137,9 +137,11 @@ if source_css not in preview or source_babel not in preview:
     raise RuntimeError('Unexpected CDN script layout. No files have been changed.')
 preview = preview.replace(source_css, f'<link rel="stylesheet" href="/bkhost/assets/bio-preview.css?v={version}">', 1)
 preview = preview.replace(source_babel, '', 1)
-preview = re.sub(r'<script src="\\./history\\.js\\?v=[^"]+"></script>',
+preview = re.sub(r'<script src="\./history\.js\?v=[^"]+"></script>',
                  f'<script defer src="/bkhost/assets/bio-history-preview.js?v={version}"></script>',
                  preview, count=1)
+if '/bkhost/assets/bio-history-preview.js' not in preview:
+    raise RuntimeError('Preview history script link was not replaced.')
 
 (tmp / 'bio-preview.jsx').write_text(app, encoding='utf-8')
 (tmp / 'bio-fast-preview.html').write_text(preview, encoding='utf-8')
