@@ -102,75 +102,7 @@
     if (seq === openSeq) renderRows(localResults());
   }
 
-  const normalizedText = value => String(value || '').replace(/\s+/g, ' ').trim();
-
-  function isVocabularyConfigPage() {
-    return /Tùy chỉnh\s*\/\s*Settings/i.test(document.body?.textContent || '');
-  }
-
-  function goToHome() {
-    const homeButton = Array.from(document.querySelectorAll('button')).find(button =>
-      /Trang chủ/i.test(normalizedText(button.textContent))
-    );
-    if (homeButton) {
-      homeButton.click();
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      return;
-    }
-    window.location.assign(window.location.origin + window.location.pathname);
-  }
-
-  function patchVocabularyBack() {
-    if (!isVocabularyConfigPage()) return;
-    const backButton = Array.from(document.querySelectorAll('button, a')).find(element =>
-      /^←?\s*Quay lại\s*\/\s*Back$/i.test(normalizedText(element.textContent))
-    );
-    if (!backButton || backButton.dataset.bioeduVocabHomeBack === '1') return;
-    backButton.dataset.bioeduVocabHomeBack = '1';
-    backButton.setAttribute('aria-label', 'Quay về Trang chủ');
-    backButton.onclick = event => {
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      goToHome();
-    };
-  }
-
-  function patchHeader() {
-    patchVocabularyBack();
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const help = buttons.find(button => /Trợ giúp\s*\/\s*Help/i.test(button.textContent || ''))
-      || buttons.find(button => button.dataset.bioeduHistoryButton === '1');
-    if (help) {
-      help.dataset.bioeduHistoryButton = '1';
-      if (help.textContent !== 'Lịch sử làm bài / Attempt History') {
-        help.textContent = 'Lịch sử làm bài / Attempt History';
-      }
-      help.setAttribute('aria-label', 'Lịch sử làm bài');
-      help.onclick = loadHistory;
-      const icon = help.parentElement?.querySelector('span');
-      if (icon) {
-        if (icon.textContent !== '↺') icon.textContent = '↺';
-        icon.style.cursor = 'pointer';
-        icon.title = 'Lịch sử làm bài';
-        icon.setAttribute('role', 'button');
-        icon.setAttribute('tabindex', '0');
-        icon.onclick = loadHistory;
-        icon.onkeydown = event => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            loadHistory();
-          }
-        };
-      }
-    }
-    buttons
-      .filter(button => /Hỏi Biola\s*\/\s*Ask Biola/i.test(button.textContent || ''))
-      .forEach(button => button.remove());
-  }
-
-  const observer = new MutationObserver(patchHeader);
-  observer.observe(document.documentElement, {childList:true,subtree:true});
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', patchHeader);
-  else patchHeader();
+  // React alone manages buttons and labels inside #root.
+  // Listen to explicit React actions instead of editing/removing React-owned DOM.
+  window.addEventListener('bioedu-open-history', loadHistory);
 })();
