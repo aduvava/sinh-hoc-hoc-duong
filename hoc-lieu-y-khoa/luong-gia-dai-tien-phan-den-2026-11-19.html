@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lượng giá – Tiếp cận bệnh nhân đại tiện phân đen | BSNT K19</title>
+<style>
+:root{--navy:#203e5e;--blue:#17679f;--bg:#f4f7fa;--line:#d9e2eb;--green:#187350;--red:#b72d36}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:#243340;line-height:1.55}
+main{max-width:770px;margin:24px auto;padding:0 15px 40px}
+header{background:#fff;border:1px solid var(--line);border-top:5px solid var(--navy);padding:24px 24px 20px;border-radius:12px;margin-bottom:16px}
+h1{font-size:26px;line-height:1.3;color:var(--navy);margin:0 0 10px}
+.sub{margin:0;color:#64758a;font-size:14px}
+.card{background:#fff;border:1px solid var(--line);padding:23px 24px;border-radius:12px;margin-bottom:14px}
+.question{margin:0 0 15px;font-size:18px;font-weight:700}
+.ix{font-size:14px;color:var(--blue);font-weight:700;margin-bottom:8px}
+.option{display:flex;align-items:flex-start;gap:12px;border:1px solid var(--line);padding:11px 13px;border-radius:9px;margin:9px 0;cursor:pointer}
+.option:hover{background:#f5f9fc;border-color:#87aecb}
+.option input{margin-top:5px;accent-color:#17679f;transform:scale(1.15)}
+button{font-family:inherit;font-size:17px;padding:14px 25px;background:var(--blue);color:#fff;font-weight:700;border:0;border-radius:9px;cursor:pointer;width:100%}
+button:focus-visible,.option:focus-within{outline:3px solid #81b6de}
+.result{display:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px;margin-top:18px}
+.result.show{display:block}
+.score{font-size:42px;font-weight:bold;color:var(--blue);margin:6px 0 12px}
+.explain{border-top:1px solid #e4ebf1;padding:11px 0}
+.correct{color:var(--green)}.wrong{color:var(--red)}
+.footer{color:#69798a;font-size:13px;text-align:center;padding-top:8px}
+@media(max-width:500px){header,.card{padding:18px}h1{font-size:23px}.question{font-size:17px}}
+</style></head><body><main>
+<header><h1>LƯỢNG GIÁ CUỐI BÀI</h1><p class="sub">Tiếp cận bệnh nhân đại tiện phân đen · Sinh viên Y khoa năm 4 · 10 câu trắc nghiệm, mỗi câu 1 điểm</p></header>
+<form id="quiz"></form>
+<button type="button" id="submit">NỘP BÀI & XEM ĐIỂM</button>
+<section id="result" class="result" aria-live="polite"></section>
+<p class="footer">Bộ câu hỏi dành cho học tập, không thu thập thông tin cá nhân hay lưu điểm trên máy chủ.</p>
+</main>
+<script>
+const questions = [{"q":"Đặc điểm nào gợi ý nhất đại tiện phân đen (melena) do xuất huyết tiêu hóa?","opts":["Phân đỏ tươi phủ ngoài khuôn phân","Phân đen như hắc ín, dính, mùi khẳn","Phân bạc màu như đất sét","Phân vàng lỏng sau ăn"],"a":1,"why":"Melena thường đen như hắc ín, sệt dính và có mùi đặc trưng vì máu đã được tiêu hóa."},{"q":"Bệnh nhân đại tiện phân đen, mạch 104 lần/phút, huyết áp 106/68 mmHg và chóng mặt. Bước ưu tiên khi tiếp nhận là gì?","opts":["Đánh giá ABC và tình trạng huyết động","Chờ kết quả H. pylori rồi xử trí","Chỉ định nội soi đại tràng trước tiên","Cho ăn rồi đánh giá đau bụng"],"a":0,"why":"Xuất huyết tiêu hóa cần đánh giá mức độ nặng, bảo đảm ABC, đường truyền và hồi sức theo huyết động trước các thăm dò tiếp theo."},{"q":"Thông tin nào giúp phân biệt phân đen do xuất huyết với phân sẫm màu không do chảy máu?","opts":["Chiều cao người bệnh","Tiền sử cận thị","Dùng viên sắt hoặc bismuth gần đây","Nhóm máu của người thân"],"a":2,"why":"Sắt, bismuth và một số thực phẩm có thể làm phân sẫm màu nhưng không nhất thiết gây xuất huyết tiêu hóa."},{"q":"Ở ca nam 58 tuổi, yếu tố nào ủng hộ khả năng loét dạ dày – tá tràng gây xuất huyết?","opts":["Không ho, không sốt","Vợ đã điều trị H. pylori","Có vài nốt sao mạch","Đau thượng vị tăng khi đói, đỡ sau ăn; thường dùng thuốc giảm đau"],"a":3,"why":"Kiểu đau thượng vị liên quan bữa ăn và khả năng dùng NSAID làm tăng nghi ngờ loét dạ dày – tá tràng."},{"q":"Bộ dấu hiệu nào khiến cần nghĩ tới bệnh gan mạn và tăng áp lực tĩnh mạch cửa trong ca này?","opts":["Đau lưng và ho khan","Tuần hoàn bàng hệ, lách to nhẹ, tiểu cầu giảm","Nghẹt mũi và sốt","Đau đầu và cứng gáy"],"a":1,"why":"Tuần hoàn bàng hệ thành bụng, lách to và tiểu cầu giảm gợi ý tăng áp lực tĩnh mạch cửa, nhưng chưa tự khẳng định nguyên nhân xuất huyết."},{"q":"Vì sao không nên kết luận ngay bệnh nhân bị xuất huyết do giãn vỡ tĩnh mạch thực quản chỉ từ tiền sử viêm gan B?","opts":["Viêm gan B không bao giờ gây xơ gan","Phân đen luôn do đại tràng","Cần xác định nguồn chảy máu bằng nội soi; viêm gan B đơn độc chưa chứng minh vỡ giãn tĩnh mạch","Cần đợi xét nghiệm nước tiểu để xác định búi giãn"],"a":2,"why":"Tiền sử viêm gan B và dấu hiệu tăng áp cửa giúp định hướng chẩn đoán phân biệt; nội soi là phương tiện xác định nguồn chảy máu trong ca này."},{"q":"Xét nghiệm nào phù hợp để đánh giá tình trạng thiếu máu và số lượng tiểu cầu ban đầu?","opts":["Công thức máu ngoại vi","Amylase nước tiểu","Điện não đồ","Định lượng vitamin D"],"a":0,"why":"Công thức máu cho Hb, Hct và tiểu cầu; cần theo dõi cùng mạch, huyết áp và diễn biến xuất huyết."},{"q":"Thăm dò quan trọng nhất để xác định ổ loét hành tá tràng đang rỉ máu và phân biệt với búi giãn tĩnh mạch thực quản là gì?","opts":["Điện tâm đồ","X-quang phổi","Nội soi đại tràng","Nội soi thực quản – dạ dày – tá tràng"],"a":3,"why":"Nội soi tiêu hóa trên nhìn trực tiếp nguồn chảy máu, phân loại Forrest và cho phép cầm máu ngay khi cần."},{"q":"Trong phân loại Forrest, Forrest Ib có nghĩa là gì?","opts":["Ổ loét có đáy sạch, không chảy máu","Ổ loét đang rỉ máu hoạt động","Ổ loét chỉ có cục máu đông bám","Mạch máu lộ nhưng không chảy máu"],"a":1,"why":"Forrest Ib là chảy máu đang hoạt động dạng rỉ máu (oozing), cần đánh giá và cầm máu qua nội soi."},{"q":"Sau cầm máu nội soi ổ loét Forrest Ib, hướng xử trí nào phù hợp nhất?","opts":["Ngừng ngay mọi thuốc giảm acid","Dùng adrenaline tiêm đơn độc là điều trị duy nhất","PPI liều cao trong 72 giờ, theo dõi tái xuất huyết và tìm H. pylori","Không theo dõi Hb/Hct vì đã cầm máu"],"a":2,"why":"Loét nguy cơ cao sau cầm máu nội soi được điều trị PPI liều cao 72 giờ; theo dõi huyết động/Hb và tìm-tiệt trừ H. pylori nếu có."}];
+const form=document.getElementById('quiz');
+questions.forEach((q,idx)=>{
+  const sec=document.createElement('section');sec.className='card';
+  const num=document.createElement('div');num.className='ix';num.textContent='CÂU '+(idx+1)+'/10';
+  const title=document.createElement('p');title.className='question';title.textContent=q.q;
+  sec.append(num,title);
+  q.opts.forEach((choice,i)=>{
+    const lab=document.createElement('label');lab.className='option';
+    const radio=document.createElement('input');radio.type='radio';radio.name='question'+idx;radio.value=String(i);
+    const txt=document.createElement('span');txt.textContent=String.fromCharCode(65+i)+'. '+choice;
+    lab.append(radio,txt);sec.append(lab);
+  });
+  form.append(sec);
+});
+document.getElementById('submit').addEventListener('click',()=>{
+  const ans=questions.map((q,i)=>document.querySelector('input[name="question'+i+'"]:checked'));
+  const first=ans.findIndex(x=>!x);
+  if(first!==-1){alert('Bạn hãy trả lời đủ 10 câu trước khi nộp bài.');form.children[first].scrollIntoView({behavior:'smooth',block:'center'});return;}
+  const score=ans.reduce((sum,el,i)=>sum+(Number(el.value)===questions[i].a?1:0),0);
+  const root=document.getElementById('result');root.innerHTML='';
+  const h=document.createElement('h2');h.textContent='KẾT QUẢ';root.append(h);
+  const s=document.createElement('div');s.className='score';s.textContent=score+'/10 điểm';root.append(s);
+  const desc=document.createElement('p');desc.textContent=score>=8?'Bạn đã nắm tốt các nội dung chính.':score>=5?'Bạn đã có nền tảng, hãy xem lại các câu chưa đúng.':'Bạn nên ôn lại cách tiếp cận, chẩn đoán và điều trị xuất huyết tiêu hóa cao.';root.append(desc);
+  questions.forEach((q,i)=>{
+    const correct=Number(ans[i].value)===q.a;
+    const div=document.createElement('div');div.className='explain';
+    const top=document.createElement('b');top.className=correct?'correct':'wrong';top.textContent='Câu '+(i+1)+': '+(correct?'Đúng':'Sai')+' · Đáp án '+String.fromCharCode(65+q.a)+'. ';
+    const detail=document.createElement('span');detail.textContent=q.why;
+    div.append(top,detail);root.append(div);
+  });
+  root.classList.add('show');root.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('submit').disabled=true;document.getElementById('submit').textContent='ĐÃ NỘP BÀI';
+  form.querySelectorAll('input').forEach(x=>x.disabled=true);
+});
+</script></body></html>
